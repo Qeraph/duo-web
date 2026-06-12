@@ -3,8 +3,8 @@
 export type PropertyType = 'house' | 'townhouse' | 'apartment' | 'granny_flat' | 'office' | 'warehouse';
 export type PropertyState = 'NSW' | 'VIC' | 'QLD' | 'SA' | 'WA' | 'TAS' | 'ACT' | 'NT';
 export type BuildType = 'new_build' | 'knockdown_rebuild' | 'extension';
-export type FinishLevel = 'standard' | 'mid_range' | 'luxury';
-export type WallType = 'brick_veneer' | 'double_brick' | 'lightweight' | 'hebel';
+export type FinishLevel = 'economy' | 'standard' | 'premium' | 'luxury';
+export type WallType = 'brick_veneer' | 'double_brick' | 'concrete';
 
 // ─── Form state ───────────────────────────────────────────────────────────────
 
@@ -70,16 +70,16 @@ export const BUILD_TYPE_OPTIONS: SelectOption<BuildType>[] = [
 ];
 
 export const FINISH_LEVEL_OPTIONS: SelectOption<FinishLevel>[] = [
-  { value: 'standard',  label: 'Standard' },
-  { value: 'mid_range', label: 'Mid-Range' },
-  { value: 'luxury',    label: 'Luxury / High-End' },
+  { value: 'economy',  label: 'Economy' },
+  { value: 'standard', label: 'Standard' },
+  { value: 'premium',  label: 'Premium' },
+  { value: 'luxury',   label: 'Luxury' },
 ];
 
 export const WALL_TYPE_OPTIONS: SelectOption<WallType>[] = [
-  { value: 'brick_veneer',  label: 'Brick Veneer' },
-  { value: 'double_brick',  label: 'Double Brick' },
-  { value: 'lightweight',   label: 'Lightweight / Clad' },
-  { value: 'hebel',         label: 'Hebel / AAC Panel' },
+  { value: 'brick_veneer', label: 'Brick Veneer' },
+  { value: 'double_brick', label: 'Double Brick' },
+  { value: 'concrete',     label: 'Concrete' },
 ];
 
 export const BEDROOM_OPTIONS = [1, 2, 3, 4, 5] as const;

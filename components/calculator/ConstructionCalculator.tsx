@@ -76,6 +76,41 @@ function CheckboxField({ label, id, checked, onChange }: {
 const selectClass = 'w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
 const inputClass  = 'w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
 
+// ── Module-level helpers ──────────────────────────────────────────────────────
+
+function optionLabel<T extends string>(
+  options: { value: T; label: string }[],
+  value: T | '',
+): string {
+  return options.find(o => o.value === value)?.label ?? String(value);
+}
+
+function joinList(items: string[]): string {
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  return items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+}
+
+// Maps the selected finish level to the appropriate estimate value.
+// economy → low, standard → mid, premium/luxury → high, default → mid.
+function getSelectedFinishEstimate(
+  finishLevel: FormState['finishLevel'],
+  r: { low: number; mid: number; high: number },
+): number {
+  if (finishLevel === 'economy')                              return r.low;
+  if (finishLevel === 'premium' || finishLevel === 'luxury')  return r.high;
+  return r.mid; // standard and fallback
+}
+
+function InputRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-3">
+      <span className="text-gray-500 w-32 shrink-0">{label}</span>
+      <span className="text-gray-900">{value}</span>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ConstructionCalculator() {
@@ -112,6 +147,24 @@ export default function ConstructionCalculator() {
   }
 
   const validationFailed = attempted && result === null;
+
+  // Breakdown variables — derived from form state, used in the How section
+  const typeLabel    = optionLabel(PROPERTY_TYPE_OPTIONS, form.investmentPropertyType);
+  const finishLabel  = optionLabel(FINISH_LEVEL_OPTIONS,  form.finishLevel);
+  const buildLabel   = optionLabel(BUILD_TYPE_OPTIONS,    form.buildType);
+  const wallLabel    = optionLabel(WALL_TYPE_OPTIONS,     form.wallType);
+  const floorCount   = Number(form.numberOfFloors);
+  const bedroomCount = Number(form.bedrooms);
+
+  // All visible boolean add-ons in display order
+  const visibleAddons = [
+    { label: 'Ducted Air-Conditioning', checked: form.ductedAirConditioning },
+    ...(visible.basement  ? [{ label: 'Basement',  checked: form.basement  }] : []),
+    ...(visible.elevator  ? [{ label: 'Elevator',  checked: form.elevator  }] : []),
+    ...(visible.mezzanine ? [{ label: 'Mezzanine', checked: form.mezzanine }] : []),
+  ];
+  const checkedAddons = visibleAddons.filter(o => o.checked).map(o => o.label.toLowerCase());
+  const selectedFinishEstimate = result ? getSelectedFinishEstimate(form.finishLevel, result) : 0;
 
   return (
     <>
@@ -334,8 +387,8 @@ export default function ConstructionCalculator() {
                 <span className="font-medium">{aud.format(result.low)}</span>
               </div>
               <div className="flex justify-between items-baseline border-b border-gray-100 pb-2">
-                <span className="text-sm text-gray-600">Mid estimate</span>
-                <span className="font-semibold text-lg">{aud.format(result.mid)}</span>
+                <span className="text-sm text-gray-600">Finish (selected)</span>
+                <span className="font-semibold text-lg">{aud.format(selectedFinishEstimate)}</span>
               </div>
               <div className="flex justify-between items-baseline border-b border-gray-100 pb-2">
                 <span className="text-sm text-gray-600">High estimate</span>
@@ -378,37 +431,135 @@ export default function ConstructionCalculator() {
     </div>
 
     {/* ── How your estimate is calculated ──────────────────────────────────── */}
-    <div className="mt-8 border border-gray-200 rounded-lg p-6">
+    <div className="mt-8">
       <h2 className="text-base font-semibold mb-4">How your estimate is calculated</h2>
-      <ul className="flex flex-col gap-2 text-sm text-gray-700 list-disc list-inside marker:text-gray-400">
-        <li>
-          Floor area is based on <strong>gross floor area</strong> — the fully enclosed floor area
-          measured across all levels of the building.
-        </li>
-        <li>
-          Enclosed areas typically include staircases, garages, basements, and lift shafts.
-        </li>
-        <li>
-          Unenclosed areas such as balconies, verandahs, porches, patios, and walkways should
-          be <strong>excluded</strong> from the floor area you enter.
-        </li>
-        <li>
-          The estimate is calculated from your property type, state, build type, finish level,
-          floor area, number of floors, and any visible add-on features you select.
-        </li>
-        <li>
-          <strong>Land price is not included.</strong> The estimate covers construction costs only.
-        </li>
-        <li>
-          This estimate is <strong>indicative only</strong> and is not a final construction quote.
-          Actual costs vary based on site conditions, contractor pricing, and market conditions at
-          the time of build.
-        </li>
-        <li>
-          For a detailed cost breakdown, engage a professional quantity surveyor or order an
-          Initial Cost Report.
-        </li>
-      </ul>
+
+      {result === null ? (
+        <p className="text-sm text-gray-500 border border-gray-200 rounded-lg p-6">
+          Complete the calculator to see how your estimate is calculated.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* A. Your inputs */}
+          <div className="border border-gray-200 rounded-lg p-5">
+            <h3 className="text-sm font-semibold mb-3">Your inputs</h3>
+            <div className="flex flex-col gap-2 text-sm">
+              <InputRow label="Type"            value={typeLabel} />
+              {visible.bedrooms && <InputRow label="Bedrooms"    value={String(form.bedrooms)} />}
+              <InputRow label="Storeys"          value={String(form.numberOfFloors)} />
+              <InputRow label="Area"             value={`${form.floorArea} m²`} />
+              {visible.wallType && <InputRow label="Wall"        value={wallLabel} />}
+              <InputRow label="Spec"             value={finishLabel} />
+              <InputRow label="Build type"       value={buildLabel} />
+              <InputRow label="Location & year"  value={`${form.investmentPropertyState}, ${form.constructionCompletionYear}`} />
+              <div className="flex gap-3">
+                <span className="text-gray-500 w-32 shrink-0">Options</span>
+                <span className="text-gray-900 leading-relaxed">
+                  {visibleAddons.map((o, i) => (
+                    <span key={o.label}>
+                      {i > 0 && <span className="text-gray-300 mx-1">·</span>}
+                      {o.label}:{' '}
+                      <span className={o.checked ? 'text-green-700 font-medium' : ''}>
+                        {o.checked ? 'Yes' : 'No'}
+                      </span>
+                    </span>
+                  ))}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* B. How we calculated it */}
+          <div className="border border-gray-200 rounded-lg p-5">
+            <h3 className="text-sm font-semibold mb-3">How we calculated it</h3>
+            <div className="flex flex-col gap-2 text-sm text-gray-700">
+              <p>
+                Your {typeLabel} estimate starts from a base construction rate for
+                a <strong>{finishLabel.toLowerCase()}</strong> finish across{' '}
+                <strong>{form.floorArea} m²</strong> on{' '}
+                <strong>{form.numberOfFloors} {floorCount === 1 ? 'floor' : 'floors'}</strong>
+                {visible.bedrooms && bedroomCount > 0
+                  ? `, with ${form.bedrooms} ${bedroomCount === 1 ? 'bedroom' : 'bedrooms'}`
+                  : ''
+                }
+                {visible.wallType && form.wallType
+                  ? ` (${wallLabel.toLowerCase()} construction)`
+                  : ''
+                }.
+              </p>
+              <p>
+                The <strong>{form.investmentPropertyState}</strong> location and{' '}
+                <strong>{form.constructionCompletionYear}</strong> completion year apply
+                regional and time-based cost adjustments to the base rate.
+              </p>
+              {checkedAddons.length > 0 ? (
+                <p>
+                  Fixed add-on costs for <strong>{joinList(checkedAddons)}</strong> are
+                  included in the total.
+                </p>
+              ) : (
+                <p>No optional add-ons were selected.</p>
+              )}
+              <p>
+                The estimate for your selected <strong>{finishLabel}</strong> finish
+                is <strong>{aud.format(selectedFinishEstimate)}</strong>. The low and
+                high figures represent the construction cost range around this value.
+              </p>
+            </div>
+          </div>
+
+          {/* C. What affects your estimate */}
+          <div className="border border-gray-200 rounded-lg p-5">
+            <h3 className="text-sm font-semibold mb-3">What affects your estimate</h3>
+            <ul className="flex flex-col gap-1.5 text-sm text-gray-700 list-disc list-inside marker:text-gray-400">
+              <li>Property type sets the base construction rate per m².</li>
+              <li>Floor area scales the total cost proportionally.</li>
+              <li>Finish level applies a multiplier across the entire build cost.</li>
+              <li>Build type adds a complexity premium for knockdown rebuilds or extensions.</li>
+              {visible.bedrooms && (
+                <li>Bedroom count adjusts for additional wet areas and joinery.</li>
+              )}
+              {visible.wallType && (
+                <li>Wall type adds or reduces the per-m² cost.</li>
+              )}
+              <li>State and completion year apply regional and time-based cost indices.</li>
+              <li>
+                Add-ons ({visibleAddons.map(o => o.label).join(', ')}) each add a fixed
+                cost when selected.
+              </li>
+              <li>Land price is not included in any estimate.</li>
+            </ul>
+          </div>
+
+          {/* D. Totals */}
+          <div className="border border-gray-200 rounded-lg p-5">
+            <h3 className="text-sm font-semibold mb-3">Totals</h3>
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-baseline border-b border-gray-100 pb-2">
+                <span className="text-sm text-gray-600">Low estimate</span>
+                <span className="text-sm font-medium">{aud.format(result.low)}</span>
+              </div>
+              <div className="flex justify-between items-baseline border-b border-gray-100 pb-2">
+                <span className="text-sm text-gray-600">Finish (selected)</span>
+                <span className="font-semibold">{aud.format(selectedFinishEstimate)}</span>
+              </div>
+              <div className="flex justify-between items-baseline border-b border-gray-100 pb-2">
+                <span className="text-sm text-gray-600">High estimate</span>
+                <span className="text-sm font-medium">{aud.format(result.high)}</span>
+              </div>
+              <div className="flex justify-between items-baseline pt-1">
+                <span className="text-sm text-gray-600">Cost range</span>
+                <span className="text-sm font-medium">{aud.format(result.high - result.low)}</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-3">
+              Indicative only. Not a final construction quote. Land price excluded.
+            </p>
+          </div>
+
+        </div>
+      )}
     </div>
     </>
   );
