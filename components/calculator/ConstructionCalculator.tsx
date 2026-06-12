@@ -155,10 +155,10 @@ function HowCardHeader({ step, title }: { step: string; title: string }) {
   );
 }
 
-// Row used in "Your inputs" and "Totals" cards
+// Row used inside a divide-y container in "Your inputs" and "Totals" cards
 function DataRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <div className="flex gap-4 py-2 border-b border-slate-50 last:border-0">
+    <div className="flex gap-4 py-2">
       <span className="text-slate-500 text-sm w-28 shrink-0">{label}</span>
       <span className={`text-sm ${bold ? 'font-semibold text-slate-900' : 'font-medium text-slate-900'}`}>
         {value}
@@ -550,12 +550,12 @@ export default function ConstructionCalculator() {
 
       {/* ── How your estimate is calculated ──────────────────────────────────── */}
       <div className="mt-8">
-        <h2 className="text-xl font-semibold text-slate-900 mb-4">
+        <h2 className="text-2xl font-semibold text-slate-900 mb-5">
           How your estimate is calculated
         </h2>
 
         {result === null ? (
-          <div className={`${cardClass} px-6 py-10 text-center`}>
+          <div className={`${cardClass} px-6 py-7 text-center`}>
             <p className="text-sm text-slate-400">
               Complete the calculator above to see a detailed explanation of your estimate.
             </p>
@@ -566,7 +566,7 @@ export default function ConstructionCalculator() {
             {/* A — Your inputs */}
             <div className={`${cardClass} p-6`}>
               <HowCardHeader step="A" title="Your inputs" />
-              <div className="flex flex-col">
+              <div className="flex flex-col divide-y divide-slate-100">
                 <DataRow label="Type"          value={typeLabel} />
                 {visible.bedrooms && <DataRow label="Bedrooms"     value={String(form.bedrooms)} />}
                 <DataRow label="Storeys"        value={String(form.numberOfFloors)} />
