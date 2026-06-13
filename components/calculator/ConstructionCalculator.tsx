@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { FormState, EstimateResult } from './types';
 import {
   PROPERTY_TYPE_OPTIONS,
@@ -453,6 +453,532 @@ function Divider() {
   return <div className="h-px bg-slate-100 my-1" />;
 }
 
+// ── Property Preview — premium SVG building + metadata strip ─────────────────
+
+// SVG coordinate system: viewBox "0 0 280 150", ground at y=118
+const SV_VB = '0 0 280 150';
+const SV_G  = 118;
+
+// Shared colour tokens
+const SVC = {
+  body:  'rgba(18,52,96,0.8)',
+  bodyS: 'rgba(100,132,180,0.42)',
+  roof:  'rgba(8,28,65,0.9)',
+  roofS: 'rgba(100,132,180,0.46)',
+  win:   'rgba(147,197,253,0.18)',
+  winS:  'rgba(147,197,253,0.42)',
+  gls:   'rgba(147,197,253,0.28)',
+  glsS:  'rgba(147,197,253,0.54)',
+  gnd:   'rgba(148,163,184,0.18)',
+  slab:  'rgba(148,163,184,0.14)',
+  base:  'rgba(14,34,68,0.72)',
+  baseS: 'rgba(80,110,150,0.4)',
+  elev:  'rgba(96,165,250,0.1)',
+  elvS:  'rgba(96,165,250,0.52)',
+  mezz:  'rgba(96,165,250,0.42)',
+  flow:  'rgba(147,197,253,0.2)',
+};
+
+// Wall texture — brick courses or concrete panel joints rendered as inline lines
+function SvgTex({ x, y, w, h, wt }: { x:number; y:number; w:number; h:number; wt:string }) {
+  if (!wt) return null;
+  if (wt === 'concrete') {
+    const elems: React.ReactElement[] = [];
+    for (let px = x + 28; px < x + w - 4; px += 28)
+      elems.push(<line key={px} x1={px} y1={y+1} x2={px} y2={y+h-1} stroke="rgba(110,130,162,0.11)" strokeWidth="0.75"/>);
+    return <>{elems}</>;
+  }
+  const sp = wt === 'double_brick' ? 4.5 : 6.5;
+  const sc = wt === 'double_brick' ? 'rgba(158,106,72,0.13)' : 'rgba(185,148,106,0.1)';
+  const elems: React.ReactElement[] = [];
+  for (let py = y + sp; py < y + h - 1; py += sp)
+    elems.push(<line key={py} x1={x+1} y1={py} x2={x+w-1} y2={py} stroke={sc} strokeWidth="0.5"/>);
+  return <>{elems}</>;
+}
+
+// Animated airflow lines: base = y of lowest line, step = upward spacing
+function SvgFlow({ x1, x2, base, n, step }: { x1:number; x2:number; base:number; n:number; step:number }) {
+  return (
+    <>
+      {Array.from({ length: n }).map((_, i) => (
+        <line key={i} className="prop-airflow-path"
+          x1={x1} y1={base - i*step} x2={x2} y2={base - i*step}
+          stroke={SVC.flow} strokeWidth="0.8" strokeDasharray="7 7"
+          style={{ animationDelay: `${i*0.5}s` }}/>
+      ))}
+    </>
+  );
+}
+
+// ── House — wide detached, pitched roof, integral garage ──────────────────────
+
+function HouseSvg({ fn, basement, elevator, mezzanine, ducted, wallType }: {
+  fn:number; basement:boolean; elevator:boolean; mezzanine:boolean; ducted:boolean; wallType:string;
+}) {
+  const G = SV_G, FH = 30, BL = 8, BR = 196, rH = 24;
+  const wT = G - fn*FH;
+  const eX = BR - 20, eW = 20;
+  const upperWxs = [22, 65, 112, ...(elevator ? [] : [152])] as number[];
+  return (
+    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+      {basement && <rect x={BL} y={G} width={BR-BL} height={20} fill={SVC.base} stroke={SVC.baseS} strokeWidth="1"/>}
+      <rect x={BL} y={wT} width={BR-BL} height={fn*FH} fill={SVC.body} stroke={SVC.bodyS} strokeWidth="1.5"/>
+      <SvgTex x={BL+1} y={wT+1} w={BR-BL-2} h={fn*FH-2} wt={wallType}/>
+      {elevator && <rect x={eX} y={wT} width={eW} height={fn*FH} fill={SVC.elev} stroke={SVC.elvS} strokeWidth="1"/>}
+      <polygon points={`${BL-5},${wT} 100,${wT-rH} ${BR+6},${wT}`} fill={SVC.roof} stroke={SVC.roofS} strokeWidth="1.5"/>
+      {fn <= 2 && <rect x={146} y={wT-rH-8} width={11} height={rH+4} fill={SVC.roof} stroke={SVC.roofS} strokeWidth="1"/>}
+      {/* Garage */}
+      <rect x={198} y={G-40} width={50} height={40} fill="rgba(14,44,84,0.78)" stroke={SVC.bodyS} strokeWidth="1.5"/>
+      <SvgTex x={199} y={G-39} w={48} h={38} wt={wallType}/>
+      <line x1={196} y1={G-40} x2={252} y2={G-40} stroke={SVC.roofS} strokeWidth="1.5"/>
+      <rect x={200} y={G-29} width={46} height={29} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="0.5"/>
+      <line x1={223} y1={G-29} x2={223} y2={G} stroke={SVC.winS} strokeWidth="0.4"/>
+      {[G-20, G-11].map(py => <line key={py} x1={200} y1={py} x2={246} y2={py} stroke={SVC.winS} strokeWidth="0.4"/>)}
+      {/* Floor dividers */}
+      {Array.from({ length: fn-1 }).map((_, i) => (
+        <line key={i} x1={BL} y1={G-(i+1)*FH} x2={BR} y2={G-(i+1)*FH} stroke={SVC.slab} strokeWidth="1"/>
+      ))}
+      {/* Ground floor windows + door */}
+      <rect x={22}  y={G-FH+8} width={18} height={14} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="1"/>
+      <rect x={48}  y={G-FH+8} width={18} height={14} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="1"/>
+      <rect x={84}  y={G-22}   width={24} height={22} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="0.5"/>
+      {!elevator && <rect x={130} y={G-FH+8} width={18} height={14} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="1"/>}
+      {!elevator && <rect x={156} y={G-FH+8} width={18} height={14} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="1"/>}
+      {/* Upper floor windows */}
+      {Array.from({ length: fn-1 }).map((_, fl) => {
+        const f = fl + 1, wy = G - (f+1)*FH + 8;
+        return upperWxs.map((wx, wi) => (
+          <rect key={`${f}-${wi}`} x={wx} y={wy} width={18} height={14} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="1"/>
+        ));
+      })}
+      {mezzanine && <line x1={BL+6} y1={G-Math.round(FH*0.52)} x2={elevator?eX-4:BR-6} y2={G-Math.round(FH*0.52)} stroke={SVC.mezz} strokeWidth="1" strokeDasharray="5 3"/>}
+      {ducted && <SvgFlow x1={BL+10} x2={elevator?eX-5:BR-10} base={G-8} n={3} step={10}/>}
+      <line x1={4} y1={G} x2={258} y2={G} stroke={SVC.gnd} strokeWidth="1"/>
+      <rect x={80} y={G} width={32} height={3} fill="rgba(148,163,184,0.14)" strokeWidth="0"/>
+    </svg>
+  );
+}
+
+// ── Granny Flat — compact single-storey, yard fence hints ────────────────────
+
+function GrannyFlatSvg({ basement, elevator, mezzanine, ducted, wallType }: {
+  basement:boolean; elevator:boolean; mezzanine:boolean; ducted:boolean; wallType:string;
+}) {
+  const G = SV_G, FH = 32, BL = 80, BR = 200, rH = 16;
+  const wT = G - FH;
+  return (
+    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+      <line x1={4} y1={G} x2={275} y2={G} stroke={SVC.gnd} strokeWidth="1"/>
+      {/* Yard fence posts */}
+      {[52,62,70].map(fx => <line key={fx} x1={fx} y1={G} x2={fx} y2={G+6} stroke="rgba(148,163,184,0.14)" strokeWidth="1"/>)}
+      <line x1={52} y1={G+4} x2={72} y2={G+4} stroke="rgba(148,163,184,0.13)" strokeWidth="0.75"/>
+      {[210,220,228].map(fx => <line key={fx} x1={fx} y1={G} x2={fx} y2={G+6} stroke="rgba(148,163,184,0.14)" strokeWidth="1"/>)}
+      <line x1={208} y1={G+4} x2={230} y2={G+4} stroke="rgba(148,163,184,0.13)" strokeWidth="0.75"/>
+      {basement && <rect x={BL} y={G} width={BR-BL} height={20} fill={SVC.base} stroke={SVC.baseS} strokeWidth="1"/>}
+      <rect x={BL} y={wT} width={BR-BL} height={FH} fill={SVC.body} stroke={SVC.bodyS} strokeWidth="1.5"/>
+      <SvgTex x={BL+1} y={wT+1} w={BR-BL-2} h={FH-2} wt={wallType}/>
+      {elevator && <rect x={BR-14} y={wT} width={14} height={FH} fill={SVC.elev} stroke={SVC.elvS} strokeWidth="0.75"/>}
+      <polygon points={`${BL-8},${wT} 140,${wT-rH} ${BR+8},${wT}`} fill={SVC.roof} stroke={SVC.roofS} strokeWidth="1.5"/>
+      <rect x={94}  y={wT+8} width={16} height={12} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="1"/>
+      <rect x={163} y={wT+8} width={16} height={12} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="1"/>
+      <rect x={133} y={G-20} width={14} height={20} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="0.5"/>
+      <line x1={140} y1={G} x2={140} y2={G+8} stroke="rgba(148,163,184,0.14)" strokeWidth="2" strokeDasharray="2 2"/>
+      {mezzanine && <line x1={BL+5} y1={wT+Math.round(FH*0.5)} x2={elevator?BR-16:BR-5} y2={wT+Math.round(FH*0.5)} stroke={SVC.mezz} strokeWidth="1" strokeDasharray="4 3"/>}
+      {ducted && <SvgFlow x1={BL+8} x2={elevator?BR-16:BR-8} base={G-9} n={2} step={10}/>}
+    </svg>
+  );
+}
+
+// ── Townhouse — three narrow row-house units, vertical emphasis ───────────────
+
+function TownhouseSvg({ fn, basement, elevator, mezzanine, ducted, wallType }: {
+  fn:number; basement:boolean; elevator:boolean; mezzanine:boolean; ducted:boolean; wallType:string;
+}) {
+  const G = SV_G, FH = 28, FN = Math.max(2, Math.min(3, fn)), rH = 9;
+  const wT = G - FN*FH;
+  const units = [{ BL:56, BR:100 }, { BL:103, BR:147 }, { BL:150, BR:191 }];
+  return (
+    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+      {basement && <rect x={52} y={G} width={143} height={20} fill={SVC.base} stroke={SVC.baseS} strokeWidth="1"/>}
+      {units.map((u, ui) => {
+        const cx = Math.round((u.BL + u.BR) / 2);
+        return (
+          <g key={ui} opacity={ui === 2 ? 0.3 : 1}>
+            <rect x={u.BL} y={wT} width={u.BR-u.BL} height={FN*FH} fill={SVC.body} stroke={SVC.bodyS} strokeWidth="1.5"/>
+            <SvgTex x={u.BL+1} y={wT+1} w={u.BR-u.BL-2} h={FN*FH-2} wt={wallType}/>
+            <polygon points={`${u.BL-3},${wT} ${cx},${wT-rH} ${u.BR+3},${wT}`} fill={SVC.roof} stroke={SVC.roofS} strokeWidth="1.5"/>
+            {Array.from({ length: FN-1 }).map((_, i) => (
+              <line key={i} x1={u.BL} y1={G-(i+1)*FH} x2={u.BR} y2={G-(i+1)*FH} stroke={SVC.slab} strokeWidth="1"/>
+            ))}
+            {Array.from({ length: FN }).map((_, f) =>
+              f === 0
+                ? <rect key={f} x={cx-7} y={G-20} width={14} height={20} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="0.5"/>
+                : <rect key={f} x={cx-7} y={G-(f+1)*FH+8} width={14} height={18} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="1"/>
+            )}
+          </g>
+        );
+      })}
+      {elevator && <rect x={143} y={wT} width={8} height={FN*FH} fill={SVC.elev} stroke={SVC.elvS} strokeWidth="1"/>}
+      {mezzanine && <line x1={56} y1={G-Math.round(FH*0.52)} x2={147} y2={G-Math.round(FH*0.52)} stroke={SVC.mezz} strokeWidth="1" strokeDasharray="4 3"/>}
+      {ducted && <SvgFlow x1={60} x2={elevator?139:145} base={G-8} n={3} step={9}/>}
+      <line x1={4} y1={G} x2={275} y2={G} stroke={SVC.gnd} strokeWidth="1"/>
+    </svg>
+  );
+}
+
+// ── Apartment — residential tower, repeated window grid, podium ───────────────
+
+function ApartmentSvg({ basement, elevator, mezzanine, ducted }: {
+  basement:boolean; elevator:boolean; mezzanine:boolean; ducted:boolean;
+}) {
+  const G = SV_G, NF = 6, FH = 13, podH = 16;
+  const BL = 94, BR = 186, tW = BR - BL;
+  const wT = G - podH - NF*FH;
+  const eX = Math.round((BL + BR) / 2) - 6, eW = 12;
+  const winXs = elevator ? [BL+5, BL+20, eX+eW+4] : [BL+5, Math.round((BL+BR)/2)-5, BR-14];
+  return (
+    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+      {basement && <rect x={84} y={G} width={tW+20} height={20} fill={SVC.base} stroke={SVC.baseS} strokeWidth="1"/>}
+      <rect x={BL} y={wT} width={tW} height={NF*FH} fill={SVC.body} stroke={SVC.bodyS} strokeWidth="1.5"/>
+      {elevator && <rect x={eX} y={wT} width={eW} height={NF*FH} fill={SVC.elev} stroke={SVC.elvS} strokeWidth="1"/>}
+      {Array.from({ length: NF }).map((_, f) => {
+        const wy = wT + f*FH + 3, wh = FH - 5;
+        return (
+          <g key={f}>
+            <line x1={BL} y1={wT+(f+1)*FH} x2={BR} y2={wT+(f+1)*FH} stroke={SVC.slab} strokeWidth="0.75"/>
+            {winXs.map((wx, wi) => (
+              <rect key={wi} x={wx} y={wy} width={12} height={wh} fill={SVC.win} stroke={SVC.winS} strokeWidth="0.75" rx="0.5"/>
+            ))}
+          </g>
+        );
+      })}
+      <rect x={BL-3} y={wT-4} width={tW+6} height={4} fill={SVC.roof} stroke={SVC.roofS} strokeWidth="1.5"/>
+      {/* Podium */}
+      <rect x={84} y={G-podH} width={tW+20} height={podH} fill={SVC.body} stroke={SVC.bodyS} strokeWidth="1.5"/>
+      <rect x={88}  y={G-podH+3} width={20} height={podH-4} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="0.5"/>
+      <rect x={147} y={G-podH+2} width={22} height={podH-2} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="0.5"/>
+      <rect x={172} y={G-podH+3} width={18} height={podH-4} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="0.5"/>
+      {mezzanine && <line x1={BL+4} y1={G-podH-Math.round(FH*1.6)} x2={elevator?eX-3:BR-4} y2={G-podH-Math.round(FH*1.6)} stroke={SVC.mezz} strokeWidth="1" strokeDasharray="3 2"/>}
+      {ducted && <SvgFlow x1={BL+5} x2={elevator?eX-3:BR-5} base={G-podH-5} n={3} step={FH}/>}
+      <line x1={4} y1={G} x2={275} y2={G} stroke={SVC.gnd} strokeWidth="1"/>
+    </svg>
+  );
+}
+
+// ── Office — curtain-wall glass corporate tower ───────────────────────────────
+
+function OfficeSvg({ basement, elevator, mezzanine, ducted }: {
+  basement:boolean; elevator:boolean; mezzanine:boolean; ducted:boolean;
+}) {
+  const G = SV_G, NF = 5, FH = 16;
+  const BL = 88, BR = 192, tW = BR - BL;
+  const wT = G - NF*FH;
+  const eX = Math.round((BL+BR)/2) - 6, eW = 12;
+  const mullions = [BL+28, BL+58, BL+86].filter(x => x < BR-4);
+  return (
+    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+      {basement && <rect x={BL-8} y={G} width={tW+16} height={20} fill={SVC.base} stroke={SVC.baseS} strokeWidth="1"/>}
+      <rect x={BL} y={wT} width={tW} height={NF*FH} fill={SVC.body} stroke={SVC.bodyS} strokeWidth="1.5"/>
+      {Array.from({ length: NF }).map((_, f) => {
+        const fy = wT + f*FH;
+        return (
+          <g key={f}>
+            <rect x={BL+3} y={fy+2} width={tW-6} height={FH-4} fill={SVC.gls} stroke={SVC.glsS} strokeWidth="0.75"/>
+            {mullions.map(mx => (
+              <line key={mx} x1={mx} y1={fy+2} x2={mx} y2={fy+FH-2} stroke="rgba(147,197,253,0.18)" strokeWidth="0.5"/>
+            ))}
+            <line x1={BL} y1={fy+FH} x2={BR} y2={fy+FH} stroke={SVC.slab} strokeWidth="1"/>
+          </g>
+        );
+      })}
+      {elevator && <rect x={eX} y={wT} width={eW} height={NF*FH} fill={SVC.elev} stroke={SVC.elvS} strokeWidth="1"/>}
+      <rect x={BL-4} y={wT-5} width={tW+8} height={5} fill={SVC.roof} stroke={SVC.roofS} strokeWidth="1.5"/>
+      {/* Lobby */}
+      <rect x={BL-10} y={G-18} width={tW+20} height={18} fill={SVC.body} stroke={SVC.bodyS} strokeWidth="1.5"/>
+      <rect x={BL-7}  y={G-15} width={tW+14} height={12} fill={SVC.gls} stroke={SVC.glsS} strokeWidth="1"/>
+      {[BL-4, BL+24, BL+52, BL+80].map((mx, i) => (
+        <line key={i} x1={mx} y1={G-15} x2={mx} y2={G-3} stroke="rgba(147,197,253,0.16)" strokeWidth="0.5"/>
+      ))}
+      <rect x={133} y={G-15} width={14} height={15} fill="rgba(147,197,253,0.34)" stroke={SVC.glsS} strokeWidth="1"/>
+      {mezzanine && <line x1={BL+4} y1={wT+Math.round(FH*1.5)} x2={elevator?eX-3:BR-4} y2={wT+Math.round(FH*1.5)} stroke={SVC.mezz} strokeWidth="1" strokeDasharray="3 2"/>}
+      {ducted && <SvgFlow x1={BL+5} x2={elevator?eX-3:BR-5} base={G-22} n={3} step={FH}/>}
+      <line x1={4} y1={G} x2={275} y2={G} stroke={SVC.gnd} strokeWidth="1"/>
+    </svg>
+  );
+}
+
+// ── Warehouse — wide industrial shed, roller doors, skylights ────────────────
+
+function WarehouseSvg({ basement, mezzanine, ducted }: {
+  basement:boolean; mezzanine:boolean; ducted:boolean;
+}) {
+  const G = SV_G, BL = 5, BR = 273, BH = 42, rH = 10;
+  const wT = G - BH;
+  return (
+    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+      {basement && <rect x={BL} y={G} width={BR-BL} height={20} fill={SVC.base} stroke={SVC.baseS} strokeWidth="1"/>}
+      <rect x={BL} y={wT} width={BR-BL} height={BH} fill={SVC.body} stroke={SVC.bodyS} strokeWidth="1.5"/>
+      <polygon points={`${BL},${wT} 139,${wT-rH} ${BR},${wT}`} fill={SVC.roof} stroke={SVC.roofS} strokeWidth="1.5"/>
+      <rect x={96}  y={wT-6} width={14} height={5} fill={SVC.win} stroke={SVC.winS} strokeWidth="0.75" rx="0.5"/>
+      <rect x={162} y={wT-6} width={14} height={5} fill={SVC.win} stroke={SVC.winS} strokeWidth="0.75" rx="0.5"/>
+      <line x1={108} y1={wT} x2={108} y2={G} stroke="rgba(148,163,184,0.12)" strokeWidth="1"/>
+      <line x1={170} y1={wT} x2={170} y2={G} stroke="rgba(148,163,184,0.12)" strokeWidth="1"/>
+      {/* Left roller door */}
+      <rect x={20} y={G-36} width={62} height={36} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="0.5"/>
+      <line x1={51} y1={G-36} x2={51} y2={G} stroke={SVC.winS} strokeWidth="0.4"/>
+      {[G-27,G-18,G-9].map(py => <line key={py} x1={20} y1={py} x2={82} y2={py} stroke={SVC.winS} strokeWidth="0.4"/>)}
+      <rect x={118} y={wT+8} width={44} height={18} fill={SVC.win} stroke={SVC.winS} strokeWidth="0.75" rx="0.5"/>
+      {/* Right roller door */}
+      <rect x={186} y={G-36} width={62} height={36} fill={SVC.win} stroke={SVC.winS} strokeWidth="1" rx="0.5"/>
+      <line x1={217} y1={G-36} x2={217} y2={G} stroke={SVC.winS} strokeWidth="0.4"/>
+      {[G-27,G-18,G-9].map(py => <line key={py} x1={186} y1={py} x2={248} y2={py} stroke={SVC.winS} strokeWidth="0.4"/>)}
+      {mezzanine && <line x1={BL+22} y1={wT+Math.round(BH*0.5)} x2={BR-22} y2={wT+Math.round(BH*0.5)} stroke={SVC.mezz} strokeWidth="1" strokeDasharray="5 3"/>}
+      {ducted && <SvgFlow x1={BL+10} x2={BR-10} base={wT+20} n={3} step={9}/>}
+      <line x1={4} y1={G} x2={275} y2={G} stroke={SVC.gnd} strokeWidth="1"/>
+    </svg>
+  );
+}
+
+// ── SVG dispatcher ────────────────────────────────────────────────────────────
+
+function PropertyPreviewSvg({
+  propertyType, floors, basement, elevator, mezzanine, ducted, wallType,
+}: {
+  propertyType: string; floors: number; basement: boolean; elevator: boolean;
+  mezzanine: boolean; ducted: boolean; wallType: string;
+}) {
+  const fn = Math.max(1, Math.min(3, floors > 0 ? floors : 1));
+  switch (propertyType) {
+    case 'house':      return <HouseSvg fn={fn} basement={basement} elevator={elevator} mezzanine={mezzanine} ducted={ducted} wallType={wallType}/>;
+    case 'granny_flat': return <GrannyFlatSvg basement={basement} elevator={elevator} mezzanine={mezzanine} ducted={ducted} wallType={wallType}/>;
+    case 'townhouse':  return <TownhouseSvg fn={fn} basement={basement} elevator={elevator} mezzanine={mezzanine} ducted={ducted} wallType={wallType}/>;
+    case 'apartment':  return <ApartmentSvg basement={basement} elevator={elevator} mezzanine={mezzanine} ducted={ducted}/>;
+    case 'office':     return <OfficeSvg basement={basement} elevator={elevator} mezzanine={mezzanine} ducted={ducted}/>;
+    case 'warehouse':  return <WarehouseSvg basement={basement} mezzanine={mezzanine} ducted={ducted}/>;
+    default:           return null;
+  }
+}
+
+// ── Metadata sub-components ───────────────────────────────────────────────────
+
+function PreviewChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[8px] font-semibold tracking-[0.13em] uppercase leading-none" style={{ color: 'rgba(255,255,255,0.22)' }}>{label}</span>
+      <span className="text-[11px] font-medium leading-none tabular-nums" style={{ color: 'rgba(255,255,255,0.56)' }}>{value}</span>
+    </div>
+  );
+}
+
+const WALL_SWATCHES: Record<string, { bg: string; label: string }> = {
+  brick_veneer: { bg: 'rgba(176,118,72,0.42)', label: 'Brick Veneer' },
+  double_brick: { bg: 'rgba(136,76,50,0.5)',   label: 'Double Brick' },
+  concrete:     { bg: 'rgba(100,116,139,0.36)', label: 'Concrete' },
+};
+
+const FINISH_BADGES: Record<string, { bg: string; border: string; text: string }> = {
+  economy:  { bg: 'rgba(148,163,184,0.1)',  border: 'rgba(148,163,184,0.2)',  text: 'text-slate-400' },
+  standard: { bg: 'rgba(96,165,250,0.1)',   border: 'rgba(96,165,250,0.22)',  text: 'text-blue-300' },
+  premium:  { bg: 'rgba(139,92,246,0.1)',   border: 'rgba(139,92,246,0.22)', text: 'text-violet-300' },
+  luxury:   { bg: 'rgba(234,179,8,0.1)',    border: 'rgba(234,179,8,0.2)',   text: 'text-yellow-300/90' },
+};
+
+// ── Property Preview card — premium surface with mouse-reactive highlight ──────
+
+function PropertyPreview({
+  propertyType, floors, basement, elevator, mezzanine, ducted,
+  wallType, finishLevel, buildType, floorArea, bedrooms,
+  state, year, visibleWallType, visibleBedrooms,
+}: {
+  propertyType: string; floors: number | ''; basement: boolean;
+  elevator: boolean; mezzanine: boolean; ducted: boolean;
+  wallType: string; finishLevel: string; buildType: string;
+  floorArea: number | ''; bedrooms: number | '';
+  state: string; year: number | '';
+  visibleWallType: boolean; visibleBedrooms: boolean;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [mx, setMx] = useState(50);
+  const [my, setMy] = useState(50);
+  const [hovered, setHovered] = useState(false);
+
+  function onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const r = cardRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setMx(Math.round(((e.clientX - r.left) / r.width)  * 100));
+    setMy(Math.round(((e.clientY - r.top)  / r.height) * 100));
+  }
+
+  if (!propertyType) return null;
+
+  const fn      = typeof floors    === 'number' && floors    > 0 ? floors    : 0;
+  const areaNum = typeof floorArea === 'number' && floorArea > 0 ? floorArea : 0;
+  const bedNum  = typeof bedrooms  === 'number' && bedrooms  > 0 ? bedrooms  : 0;
+  const yearNum = typeof year      === 'number' && year      > 0 ? year      : 0;
+
+  const wallSwatch  = visibleWallType ? (WALL_SWATCHES[wallType] ?? null) : null;
+  const finishBadge = FINISH_BADGES[finishLevel] ?? null;
+  const buildLabel  = BUILD_TYPE_OPTIONS.find(o => o.value === buildType)?.label ?? '';
+  const finishLabel = FINISH_LEVEL_OPTIONS.find(o => o.value === finishLevel)?.label ?? '';
+
+  const activeAddons = [
+    ducted    && 'Ducted AC',
+    basement  && 'Basement',
+    elevator  && 'Elevator',
+    mezzanine && 'Mezzanine',
+  ].filter(Boolean) as string[];
+
+  const hasMaterialRow = !!(wallSwatch || finishBadge || buildLabel);
+  const hasSpecRow     = fn > 0 || (visibleBedrooms && bedNum > 0) || areaNum > 0 || !!state || yearNum > 0;
+
+  // Perspective tilt: max ±2deg — restrained financial aesthetic
+  const tiltX = hovered ? +((my - 50) * -0.04).toFixed(2) : 0;
+  const tiltY = hovered ? +((mx - 50) *  0.04).toFixed(2) : 0;
+
+  return (
+    <div
+      ref={cardRef}
+      className="relative mt-5 rounded-xl overflow-hidden cursor-default select-none"
+      onMouseMove={onMouseMove}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setMx(50); setMy(50); }}
+      style={{
+        // Layered deep navy base — richer than a flat colour
+        background: 'linear-gradient(148deg, rgba(28,54,96,0.6) 0%, rgba(8,22,52,0.88) 55%, rgba(18,32,68,0.76) 100%)',
+        border: '1px solid rgba(255,255,255,0.09)',
+        boxShadow: hovered
+          ? '0 10px 38px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.11), 0 0 0 0.5px rgba(147,197,253,0.1)'
+          : '0 2px 10px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.07)',
+        // Subtle perspective tilt follows mouse
+        transform: `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateY(${hovered ? -1 : 0}px)`,
+        transition: hovered
+          ? 'transform 0.06s linear, box-shadow 0.15s ease'
+          : 'transform 0.5s cubic-bezier(0.23,1,0.32,1), box-shadow 0.3s ease',
+      }}
+    >
+      {/* ── Noise / grain texture via SVG feTurbulence ── */}
+      <svg
+        className="pointer-events-none absolute inset-0 w-full h-full"
+        style={{ opacity: 0.042, mixBlendMode: 'overlay' }}
+        aria-hidden="true"
+      >
+        <filter id="pc-grain">
+          <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="4" stitchTiles="stitch"/>
+          <feColorMatrix type="saturate" values="0"/>
+        </filter>
+        <rect width="100%" height="100%" filter="url(#pc-grain)"/>
+      </svg>
+
+      {/* ── Ambient iridescent gradient — slow breathe ── */}
+      <div
+        className="pc-ambient pointer-events-none absolute inset-0"
+        style={{ background: 'linear-gradient(138deg, rgba(147,197,253,0.065) 0%, transparent 45%, rgba(167,139,250,0.042) 100%)' }}
+      />
+
+      {/* ── Specular highlight — follows mouse position ── */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `radial-gradient(circle at ${mx}% ${my}%, rgba(210,230,255,0.17) 0%, rgba(147,197,253,0.055) 28%, transparent 60%)`,
+          opacity: hovered ? 1 : 0.2,
+          transition: 'opacity 0.18s ease',
+        }}
+      />
+
+      {/* ── Shimmer sweep — slow diagonal pass ── */}
+      <div
+        className="pc-sheen pointer-events-none absolute inset-y-0 -left-[20%] w-[40%]"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(210,228,255,0.062), transparent)' }}
+      />
+
+      {/* ── Top edge light ── */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{ background: 'linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.14) 25%, rgba(200,220,255,0.24) 50%, rgba(255,255,255,0.14) 75%, transparent 95%)' }}
+      />
+
+      {/* ── Content ── */}
+      <div className="relative z-10">
+
+        {/* Header */}
+        <div className="px-4 pt-3 pb-1.5 flex items-center justify-between">
+          <span className="text-[9px] font-semibold tracking-[0.15em] uppercase" style={{ color: 'rgba(255,255,255,0.28)' }}>
+            Property Preview
+          </span>
+          <span className="text-[9px] font-medium tracking-wide" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            {PROPERTY_SUBTITLES[propertyType] ?? ''}
+          </span>
+        </div>
+
+        {/* Building SVG */}
+        <div className="px-2 pb-0.5">
+          <PropertyPreviewSvg
+            propertyType={propertyType}
+            floors={fn}
+            basement={basement}
+            elevator={elevator}
+            mezzanine={mezzanine}
+            ducted={ducted}
+            wallType={visibleWallType ? wallType : ''}
+          />
+        </div>
+
+        {/* Metadata strip */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.055)' }}>
+
+          {/* Material / finish / build type */}
+          {hasMaterialRow && (
+            <div className="px-4 py-2.5 flex items-center gap-3 flex-wrap" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              {wallSwatch && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm shrink-0"
+                    style={{ background: wallSwatch.bg, boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.2)' }}/>
+                  <span className="text-[10.5px] leading-none" style={{ color: 'rgba(255,255,255,0.42)' }}>{wallSwatch.label}</span>
+                </div>
+              )}
+              {finishBadge && finishLabel && (
+                <span className={`text-[10.5px] font-medium px-2 py-0.5 rounded ${finishBadge.text}`}
+                  style={{ background: finishBadge.bg, boxShadow: `inset 0 0 0 0.5px ${finishBadge.border}` }}>
+                  {finishLabel}
+                </span>
+              )}
+              {buildLabel && (
+                <span className="text-[9px] font-semibold tracking-[0.1em] uppercase"
+                  style={{ color: 'rgba(255,255,255,0.26)' }}>
+                  {buildLabel}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Spec chips */}
+          {hasSpecRow && (
+            <div className="px-4 py-2.5 flex items-start gap-5 flex-wrap">
+              {fn > 0                        && <PreviewChip label="Floors" value={String(fn)}/>}
+              {visibleBedrooms && bedNum > 0 && <PreviewChip label="Beds"   value={String(bedNum)}/>}
+              {areaNum > 0                   && <PreviewChip label="Area"   value={`${areaNum} m²`}/>}
+              {state                         && <PreviewChip label="State"  value={state}/>}
+              {yearNum > 0                   && <PreviewChip label="Year"   value={String(yearNum)}/>}
+            </div>
+          )}
+
+          {/* Active add-on chips */}
+          {activeAddons.length > 0 && (
+            <div className="px-4 pb-3 pt-0.5 flex flex-wrap gap-1.5">
+              {activeAddons.map(a => (
+                <span key={a} className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(96,165,250,0.07)', boxShadow: 'inset 0 0 0 0.5px rgba(96,165,250,0.24)', color: 'rgba(147,197,253,0.58)' }}>
+                  {a}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Module-level helpers (logic unchanged from source) ────────────────────────
 
 function optionLabel<T extends string>(
@@ -544,6 +1070,34 @@ export default function ConstructionCalculator() {
 
   return (
     <>
+      <style href="prop-preview-animations" precedence="low">{`
+        @keyframes prop-breathe {
+          0%, 100% { filter: drop-shadow(0 0 2px rgba(96,165,250,0.06)); opacity: 0.9; }
+          50%       { filter: drop-shadow(0 0 4px rgba(96,165,250,0.15)); opacity: 1; }
+        }
+        @keyframes prop-airflow {
+          from { stroke-dashoffset: 14; }
+          to   { stroke-dashoffset: 0; }
+        }
+        @keyframes pc-sheen {
+          0%   { transform: translateX(-115%) skewX(-15deg); opacity: 0; }
+          15%  { opacity: 1; }
+          85%  { opacity: 1; }
+          100% { transform: translateX(215%) skewX(-15deg); opacity: 0; }
+        }
+        @keyframes pc-ambient {
+          0%, 100% { opacity: 0.22; }
+          50%       { opacity: 0.52; }
+        }
+        .prop-breathe      { animation: prop-breathe 4.5s ease-in-out infinite; }
+        .prop-airflow-path { animation: prop-airflow 2.4s linear infinite; }
+        .pc-sheen          { animation: pc-sheen 11s ease-in-out infinite 3s; }
+        .pc-ambient        { animation: pc-ambient 6s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .prop-breathe, .prop-airflow-path, .pc-sheen, .pc-ambient { animation: none !important; }
+        }
+      `}</style>
+
       {/* ── Two-column layout: form (light) + results (dark) ─────────────────── */}
       <div className="flex flex-col lg:flex-row gap-5 items-start">
 
@@ -740,14 +1294,33 @@ export default function ConstructionCalculator() {
 
           {/* ── Estimate area ────────────────────────────────────────────── */}
           {result === null ? (
-            <div className="flex flex-col items-center justify-center text-center py-10 px-4">
-              <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mb-4">
-                <IconCalculator className="w-7 h-7 text-white/40" />
+            <div>
+              <div className="flex flex-col items-center justify-center text-center py-7 px-4">
+                <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mb-4">
+                  <IconCalculator className="w-7 h-7 text-white/40" />
+                </div>
+                <p className="text-sm font-medium text-white/60 mb-1">Ready to calculate</p>
+                <p className="text-sm text-white/30 leading-relaxed">
+                  Fill in all property details and press Calculate Estimate.
+                </p>
               </div>
-              <p className="text-sm font-medium text-white/60 mb-1">Ready to calculate</p>
-              <p className="text-sm text-white/30 leading-relaxed">
-                Fill in all property details and press Calculate Estimate.
-              </p>
+              <PropertyPreview
+                propertyType={form.investmentPropertyType}
+                floors={form.numberOfFloors}
+                basement={form.basement}
+                elevator={form.elevator}
+                mezzanine={form.mezzanine}
+                ducted={form.ductedAirConditioning}
+                wallType={form.wallType}
+                finishLevel={form.finishLevel}
+                buildType={form.buildType}
+                floorArea={form.floorArea}
+                bedrooms={form.bedrooms}
+                state={form.investmentPropertyState}
+                year={form.constructionCompletionYear}
+                visibleWallType={visible.wallType}
+                visibleBedrooms={visible.bedrooms}
+              />
             </div>
           ) : (
             <div>
@@ -767,6 +1340,25 @@ export default function ConstructionCalculator() {
                   {aud.format(perSqm)} per m²
                 </p>
               )}
+
+              {/* Property Preview — centrepiece between estimate hero and range */}
+              <PropertyPreview
+                propertyType={form.investmentPropertyType}
+                floors={form.numberOfFloors}
+                basement={form.basement}
+                elevator={form.elevator}
+                mezzanine={form.mezzanine}
+                ducted={form.ductedAirConditioning}
+                wallType={form.wallType}
+                finishLevel={form.finishLevel}
+                buildType={form.buildType}
+                floorArea={form.floorArea}
+                bedrooms={form.bedrooms}
+                state={form.investmentPropertyState}
+                year={form.constructionCompletionYear}
+                visibleWallType={visible.wallType}
+                visibleBedrooms={visible.bedrooms}
+              />
 
               {/* Range bar */}
               <div className="mt-6">
@@ -810,7 +1402,7 @@ export default function ConstructionCalculator() {
           )}
 
           {/* ── CTA — always visible ─────────────────────────────────────── */}
-          <div className={`${result !== null ? 'mt-5 pt-5 border-t border-white/10' : ''}`}>
+          <div className={`${(result !== null || !!form.investmentPropertyType) ? 'mt-5 pt-5 border-t border-white/10' : ''}`}>
             <button
               type="button"
               className="w-full h-11 flex items-center justify-center gap-2 rounded-xl border border-white/30 text-white text-sm font-semibold hover:bg-white/10 active:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/50 transition-colors duration-150"
