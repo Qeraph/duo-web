@@ -168,9 +168,17 @@ const PROPERTY_ICONS: Record<string, React.FC<{ className?: string }>> = {
 // ALL CAPS label above a logical form section
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] font-semibold tracking-[0.10em] text-slate-500 uppercase mb-4">
+    <p className="text-[11px] font-semibold tracking-[0.10em] text-slate-700 uppercase mb-4">
       {children}
     </p>
+  );
+}
+
+function SectionCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-[1.15rem] border border-[#F6DCC5] bg-[linear-gradient(180deg,#FFFDFB_0%,#FFF7F1_100%)] px-5 sm:px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+      {children}
+    </div>
   );
 }
 
@@ -204,11 +212,11 @@ function LightSelect({ id, value, onChange, children }: {
         id={id}
         value={value}
         onChange={onChange}
-        className="w-full h-10 rounded-lg bg-white border border-slate-300 px-3 pr-9 appearance-none text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors cursor-pointer"
+        className="w-full h-11 rounded-xl bg-white border border-[#E7C4A2] px-3 pr-10 appearance-none text-sm text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:border-transparent transition-colors cursor-pointer hover:border-[#F0B27A]"
       >
         {children}
       </select>
-      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-[#C56B1E]">
         <IconChevron className="w-4 h-4" />
       </div>
     </div>
@@ -219,12 +227,19 @@ function LightSelect({ id, value, onChange, children }: {
 function PropertyTypeSelector({
   value,
   onChange,
+  error = false,
 }: {
   value: FormState['investmentPropertyType'];
   onChange: (v: FormState['investmentPropertyType']) => void;
+  error?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    <div
+      className={[
+        'grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-xl transition-colors',
+        error ? 'ring-1 ring-red-300 p-2 bg-red-50/40' : '',
+      ].join(' ')}
+    >
       {PROPERTY_TYPE_OPTIONS.map(opt => {
         const active = value === opt.value;
         const Icon = PROPERTY_ICONS[opt.value] ?? IconApartment;
@@ -234,11 +249,12 @@ function PropertyTypeSelector({
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value as FormState['investmentPropertyType'])}
+            aria-pressed={active}
             className={[
               'flex items-start gap-2.5 px-3 py-2.5 rounded-lg border text-left transition-all duration-150',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
+              'focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-1',
               active
-                ? 'bg-slate-50 border-slate-900 text-slate-900'
+                ? 'bg-[#FFF3E8] border-[#F47A0B] text-slate-900'
                 : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-800',
             ].join(' ')}
           >
@@ -261,13 +277,19 @@ function SegmentedControl({
   options,
   value,
   onChange,
+  ariaLabel,
 }: {
   options: readonly { value: string; label: string }[];
   value: string;
   onChange: (v: string) => void;
+  ariaLabel: string;
 }) {
   return (
-    <div className="flex rounded-lg bg-slate-100 border border-slate-200 p-0.5 gap-0.5">
+    <div
+      role="radiogroup"
+      aria-label={ariaLabel}
+      className="grid grid-cols-2 sm:flex rounded-lg bg-slate-100 border border-slate-200 p-0.5 gap-0.5"
+    >
       {options.map(opt => {
         const active = value === opt.value;
         return (
@@ -275,16 +297,54 @@ function SegmentedControl({
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
+            role="radio"
+            aria-checked={active}
+            aria-pressed={active}
             className={[
               'flex-1 self-stretch flex items-center justify-center rounded-md px-2 py-2',
               'text-sm text-center transition-all duration-150',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
+              'focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-1',
               active
-                ? 'bg-slate-900 text-white font-semibold shadow-sm'
+                ? 'bg-[#F47A0B] text-white font-semibold shadow-sm'
                 : 'text-slate-500 hover:text-slate-800',
             ].join(' ')}
           >
             {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BuildTypeSelector({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+      {options.map(opt => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            aria-pressed={active}
+            className={[
+              'min-h-[3.25rem] rounded-lg border px-3 py-2.5 text-left text-sm leading-snug transition-all duration-150',
+              'focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-1',
+              active
+                ? 'bg-[#FFF3E8] border-[#F47A0B] text-slate-900 shadow-sm'
+                : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-800',
+            ].join(' ')}
+          >
+            <span className="font-medium">{opt.label}</span>
           </button>
         );
       })}
@@ -304,8 +364,9 @@ function PillSelector({
   onChange: (v: string) => void;
   cols?: 2 | 3;
 }) {
+  const gridClass = cols === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2';
   return (
-    <div className={`grid gap-2 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+    <div role="radiogroup" className={`grid gap-2 ${gridClass}`}>
       {options.map(opt => {
         const active = value === opt.value;
         return (
@@ -313,11 +374,14 @@ function PillSelector({
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
+            role="radio"
+            aria-checked={active}
+            aria-pressed={active}
             className={[
               'py-2.5 px-3 rounded-lg border text-sm text-center transition-all duration-150',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
+              'focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-1',
               active
-                ? 'bg-white border-slate-900 text-slate-900 font-medium shadow-sm'
+                ? 'bg-[#FFF3E8] border-[#F47A0B] text-[#B45309] font-medium shadow-sm'
                 : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700',
             ].join(' ')}
           >
@@ -335,11 +399,13 @@ function Stepper({
   options,
   onChange,
   ariaLabel,
+  className = '',
 }: {
   value: number | '';
   options: readonly number[];
   onChange: (v: number | '') => void;
   ariaLabel: string;
+  className?: string;
 }) {
   const idx = value === '' ? -1 : (options as readonly number[]).indexOf(value as number);
   const canDec = idx > 0;
@@ -354,19 +420,19 @@ function Stepper({
   }
 
   return (
-    <div className="flex items-center justify-between h-10 bg-white border border-slate-300 rounded-lg px-2 gap-1">
+    <div className={`flex items-center justify-between h-11 bg-white border border-[#E7C4A2] rounded-xl px-2 gap-1 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className}`}>
       <button
         type="button"
         onClick={handleDec}
         disabled={!canDec}
         aria-label={`Decrease ${ariaLabel}`}
-        className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-1 focus:ring-[#F47A0B]"
       >
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-3.5 h-3.5" aria-hidden="true">
           <path d="M3 8h10" />
         </svg>
       </button>
-      <span className="text-sm font-medium text-slate-900 tabular-nums min-w-[1.5rem] text-center">
+      <span className="text-sm font-semibold text-slate-900 tabular-nums min-w-[1.5rem] text-center">
         {value === '' ? <span className="text-slate-300">—</span> : value}
       </span>
       <button
@@ -374,7 +440,7 @@ function Stepper({
         onClick={handleInc}
         disabled={!canInc && idx !== -1}
         aria-label={`Increase ${ariaLabel}`}
-        className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-1 focus:ring-[#F47A0B]"
       >
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-3.5 h-3.5" aria-hidden="true">
           <path d="M8 3v10M3 8h10" />
@@ -403,19 +469,19 @@ function ToggleCard({
       type="button"
       id={id}
       role="checkbox"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
       className={[
         'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg border text-left transition-all duration-150',
-        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
+        'focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-1',
         checked
-          ? 'bg-blue-50 border-blue-600 text-blue-900'
+          ? 'bg-[#FFF3E8] border-[#F47A0B] text-[#9A3412]'
           : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-800',
       ].join(' ')}
     >
       <span className={[
         'w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors',
-        checked ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white',
+        checked ? 'bg-[#F47A0B] border-[#F47A0B]' : 'border-slate-300 bg-white',
       ].join(' ')}>
         {checked && (
           <svg viewBox="0 0 20 20" fill="currentColor" className="w-2.5 h-2.5 text-white" aria-hidden="true">
@@ -456,7 +522,7 @@ function DataRow({ label, value }: { label: string; value: string }) {
 // ── Section divider ───────────────────────────────────────────────────────────
 
 function Divider() {
-  return <div className="h-px bg-slate-100 my-1" />;
+  return <div className="h-px bg-[#F6D2B0]/55 my-1" />;
 }
 
 // ── Property Preview — premium SVG building + metadata strip ─────────────────
@@ -467,26 +533,26 @@ const SV_G  = 118;
 
 // Shared colour tokens — architectural render palette
 const SVC = {
-  body:  'rgba(232,236,242,0.96)',   // light grey-white facade
-  bodyS: 'rgba(150,165,180,0.40)',   // subtle facade edge
-  roof:  'rgba(38,42,50,0.92)',      // charcoal roof
-  roofS: 'rgba(55,62,74,0.50)',      // charcoal roof edge
-  win:   'rgba(14,20,34,0.82)',      // near-black window glass
-  winS:  'rgba(10,15,26,0.50)',      // dark window frame
-  gls:   'rgba(78,116,172,0.56)',    // office curtain-wall glass
-  glsS:  'rgba(48,80,130,0.44)',     // office glass frame
-  gnd:   'rgba(145,158,172,0.40)',   // ground line
-  slab:  'rgba(175,188,200,0.22)',   // floor/slab line
-  base:  'rgba(100,112,126,0.70)',   // basement concrete
-  baseS: 'rgba(82,96,112,0.52)',     // basement edge
-  elev:  'rgba(205,215,228,0.30)',   // elevator shaft
-  elvS:  'rgba(130,148,168,0.40)',   // elevator edge
-  mezz:  'rgba(72,128,210,0.44)',    // mezzanine dashed line
-  flow:  'rgba(72,138,224,0.34)',    // ducted AC airflow
-  door:  'rgba(178,102,44,0.88)',    // warm timber/orange entry
-  doorS: 'rgba(138,78,30,0.68)',     // entry door edge
-  drv:   'rgba(165,175,186,0.22)',   // driveway / ground plane
-  lawn:  'rgba(68,116,55,0.28)',     // landscape strip
+  body:  'rgba(245,238,228,0.97)',   // warm off-white facade
+  bodyS: 'rgba(145,131,115,0.36)',   // warm architectural edge
+  roof:  'rgba(74,74,72,0.92)',      // muted warm charcoal roof
+  roofS: 'rgba(113,106,98,0.36)',    // roof edge
+  win:   'rgba(42,50,61,0.86)',      // dark slate window glass
+  winS:  'rgba(42,50,61,0.50)',      // dark slate frame
+  gls:   'rgba(168,176,186,0.28)',   // softer office glazing
+  glsS:  'rgba(120,129,141,0.26)',   // glazing frame
+  gnd:   'rgba(154,149,141,0.48)',   // ground line
+  slab:  'rgba(213,205,193,0.36)',   // slab line
+  base:  'rgba(186,180,172,0.48)',   // basement concrete
+  baseS: 'rgba(133,126,119,0.38)',   // basement edge
+  elev:  'rgba(220,214,205,0.44)',   // elevator shaft
+  elvS:  'rgba(139,130,118,0.24)',   // elevator edge
+  mezz:  'rgba(128,119,109,0.55)',   // mezzanine indicator
+  flow:  'rgba(144,138,130,0.44)',   // ducted AC indicator
+  door:  'rgba(174,115,67,0.74)',    // restrained timber accent
+  doorS: 'rgba(128,84,47,0.52)',     // entry edge
+  drv:   'rgba(209,203,195,0.56)',   // driveway / ground plane
+  lawn:  'rgba(176,170,160,0.12)',   // subdued landscape strip
 };
 
 // Wall texture — brick courses or concrete panel joints rendered as inline lines
@@ -521,10 +587,9 @@ function SvgFlow({ x1, x2, base, n, step }: { x1:number; x2:number; base:number;
   return (
     <>
       {Array.from({ length: n }).map((_, i) => (
-        <line key={i} className="prop-airflow-path"
+        <line key={i}
           x1={x1} y1={base - i*step} x2={x2} y2={base - i*step}
-          stroke={SVC.flow} strokeWidth="0.8" strokeDasharray="7 7"
-          style={{ animationDelay: `${i*0.5}s` }}/>
+          stroke={SVC.flow} strokeWidth="0.8" strokeDasharray="7 7"/>
       ))}
     </>
   );
@@ -540,7 +605,7 @@ function HouseSvg({ fn, basement, elevator, mezzanine, ducted, wallType }: {
   const eX = BR - 20, eW = 20;
   const upperWxs = [20, 62, 106, ...(elevator ? [] : [150])] as number[];
   return (
-    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+    <svg viewBox={SV_VB} fill="none" className="w-full" aria-hidden="true">
       {/* Ground shadow */}
       <ellipse cx={116} cy={G+3} rx={124} ry={5} fill="rgba(0,0,0,0.09)"/>
       {/* Driveway */}
@@ -614,7 +679,7 @@ function GrannyFlatSvg({ basement, elevator, mezzanine, ducted, wallType }: {
   const wT = G - FH;
   const mid = Math.round((BL + BR) / 2);
   return (
-    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+    <svg viewBox={SV_VB} fill="none" className="w-full" aria-hidden="true">
       {/* Ground shadow */}
       <ellipse cx={mid} cy={G+3} rx={80} ry={4} fill="rgba(0,0,0,0.10)"/>
       {/* Lawn strip */}
@@ -668,7 +733,7 @@ function TownhouseSvg({ fn, basement, elevator, mezzanine, ducted, wallType }: {
   const wT = G - FN*FH;
   const units = [{ BL:54, BR:100 }, { BL:102, BR:148 }, { BL:150, BR:194 }];
   return (
-    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+    <svg viewBox={SV_VB} fill="none" className="w-full" aria-hidden="true">
       {/* Ground shadow */}
       <ellipse cx={124} cy={G+3} rx={90} ry={4} fill="rgba(0,0,0,0.11)"/>
       {/* Street paving */}
@@ -732,7 +797,7 @@ function ApartmentSvg({ basement, elevator, mezzanine, ducted }: {
     ? [BL+7, BL+22, eX+eW+3, BR-18]
     : [BL+11, BL+29, BL+47, BL+65];
   return (
-    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+    <svg viewBox={SV_VB} fill="none" className="w-full" aria-hidden="true">
       {/* Shadow */}
       <ellipse cx={mid} cy={G+3} rx={64} ry={4} fill="rgba(0,0,0,0.13)"/>
       {/* Landscape */}
@@ -786,7 +851,7 @@ function OfficeSvg({ basement, elevator, mezzanine, ducted }: {
   const mullions = [BL+26, BL+52, BL+78, BL+104].filter(x => x < BR-4);
   const mid = Math.round((BL+BR)/2);
   return (
-    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+    <svg viewBox={SV_VB} fill="none" className="w-full" aria-hidden="true">
       {/* Shadow */}
       <ellipse cx={mid} cy={G+3} rx={66} ry={4} fill="rgba(0,0,0,0.12)"/>
       {/* Concrete plaza */}
@@ -841,7 +906,7 @@ function WarehouseSvg({ basement, mezzanine, ducted }: {
   const wT = G - BH;
   const mid = Math.round((BL + BR) / 2);
   return (
-    <svg viewBox={SV_VB} fill="none" className="prop-breathe w-full" aria-hidden="true">
+    <svg viewBox={SV_VB} fill="none" className="w-full" aria-hidden="true">
       {/* Ground shadow */}
       <ellipse cx={mid} cy={G+3} rx={144} ry={5} fill="rgba(0,0,0,0.11)"/>
       {/* Concrete apron */}
@@ -894,31 +959,31 @@ function DefaultPreviewSvg() {
   return (
     <svg viewBox={SV_VB} fill="none" className="w-full" aria-hidden="true">
       {/* Ground */}
-      <line x1={18} y1={G} x2={262} y2={G} stroke="rgba(147,197,253,0.18)" strokeWidth="0.75"/>
+      <line x1={18} y1={G} x2={262} y2={G} stroke="rgba(136,152,172,0.28)" strokeWidth="0.75"/>
       {/* Building outline */}
       <rect x={60} y={G-72} width={160} height={72}
-        stroke="rgba(147,197,253,0.20)" strokeWidth="0.75" strokeDasharray="5 3"/>
+        stroke="rgba(128,146,168,0.30)" strokeWidth="0.75" strokeDasharray="5 3"/>
       {/* Roof */}
       <polygon points={`52,${G-72} 140,${G-98} 228,${G-72}`}
-        stroke="rgba(147,197,253,0.16)" strokeWidth="0.75" strokeDasharray="5 3"/>
+        stroke="rgba(96,112,132,0.24)" strokeWidth="0.75" strokeDasharray="5 3"/>
       {/* Window placeholders */}
       {[82, 116, 150, 184].map(wx => (
         <rect key={wx} x={wx} y={G-56} width={18} height={13}
-          stroke="rgba(147,197,253,0.13)" strokeWidth="0.5" strokeDasharray="3 2"/>
+          stroke="rgba(128,146,168,0.22)" strokeWidth="0.5" strokeDasharray="3 2"/>
       ))}
       {/* Door */}
       <rect x={130} y={G-28} width={20} height={28}
-        stroke="rgba(147,197,253,0.16)" strokeWidth="0.5" strokeDasharray="3 2"/>
+        stroke="rgba(128,146,168,0.24)" strokeWidth="0.5" strokeDasharray="3 2"/>
       {/* Corner tick marks */}
       {corners.map(([x, y], i) => (
         <g key={i}>
-          <line x1={x-5} y1={y} x2={x+5} y2={y} stroke="rgba(147,197,253,0.22)" strokeWidth="0.75"/>
-          <line x1={x} y1={y-5} x2={x} y2={y+5} stroke="rgba(147,197,253,0.22)" strokeWidth="0.75"/>
+          <line x1={x-5} y1={y} x2={x+5} y2={y} stroke="rgba(128,146,168,0.30)" strokeWidth="0.75"/>
+          <line x1={x} y1={y-5} x2={x} y2={y+5} stroke="rgba(128,146,168,0.30)" strokeWidth="0.75"/>
         </g>
       ))}
       {/* Centre cross */}
-      <line x1={137} y1={G-38} x2={143} y2={G-38} stroke="rgba(147,197,253,0.14)" strokeWidth="0.5"/>
-      <line x1={140} y1={G-41} x2={140} y2={G-35} stroke="rgba(147,197,253,0.14)" strokeWidth="0.5"/>
+      <line x1={137} y1={G-38} x2={143} y2={G-38} stroke="rgba(128,146,168,0.22)" strokeWidth="0.5"/>
+      <line x1={140} y1={G-41} x2={140} y2={G-35} stroke="rgba(128,146,168,0.22)" strokeWidth="0.5"/>
     </svg>
   );
 }
@@ -948,8 +1013,8 @@ function PropertyPreviewSvg({
 function PreviewChip({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[9px] font-semibold tracking-[0.12em] uppercase leading-none" style={{ color: 'rgba(255,255,255,0.34)' }}>{label}</span>
-      <span className="text-[12px] font-medium leading-none tabular-nums" style={{ color: 'rgba(255,255,255,0.72)' }}>{value}</span>
+      <span className="text-[9px] font-semibold tracking-[0.12em] uppercase leading-none" style={{ color: 'rgba(71,85,105,0.86)' }}>{label}</span>
+      <span className="text-[12px] font-medium leading-none tabular-nums" style={{ color: 'rgba(15,23,42,0.9)' }}>{value}</span>
     </div>
   );
 }
@@ -961,13 +1026,13 @@ const WALL_SWATCHES: Record<string, { bg: string; label: string }> = {
 };
 
 const FINISH_BADGES: Record<string, { bg: string; border: string; text: string }> = {
-  economy:  { bg: 'rgba(148,163,184,0.1)',  border: 'rgba(148,163,184,0.2)',  text: 'text-slate-400' },
-  standard: { bg: 'rgba(96,165,250,0.1)',   border: 'rgba(96,165,250,0.22)',  text: 'text-blue-300' },
-  premium:  { bg: 'rgba(139,92,246,0.1)',   border: 'rgba(139,92,246,0.22)', text: 'text-violet-300' },
-  luxury:   { bg: 'rgba(234,179,8,0.1)',    border: 'rgba(234,179,8,0.2)',   text: 'text-yellow-300/90' },
+  economy:  { bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.22)', text: 'text-slate-600' },
+  standard: { bg: 'rgba(244,122,11,0.10)',  border: 'rgba(244,122,11,0.18)',  text: 'text-orange-700' },
+  premium:  { bg: 'rgba(234,88,12,0.12)',   border: 'rgba(234,88,12,0.18)',   text: 'text-orange-800' },
+  luxury:   { bg: 'rgba(180,83,9,0.10)',    border: 'rgba(180,83,9,0.18)',    text: 'text-amber-700' },
 };
 
-// ── Property Preview card — premium surface with mouse-reactive highlight ──────
+// ── Property Preview card — static architectural estimate thumbnail ────────────
 
 function PropertyPreview({
   propertyType, floors, basement, elevator, mezzanine, ducted,
@@ -982,24 +1047,28 @@ function PropertyPreview({
   visibleWallType: boolean; visibleBedrooms: boolean;
 }) {
   const cardStyle = {
-    background: 'linear-gradient(145deg, #1e3d68 0%, #152e52 100%)',
-    border: '1px solid rgba(255,255,255,0.10)',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.07)',
+    background: 'linear-gradient(180deg, #FFFFFF 0%, #F7F9FC 100%)',
+    border: '1px solid #E6EAF0',
+    boxShadow: '0 12px 30px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.7)',
   };
 
   if (!propertyType) {
     return (
-      <div className="relative mt-0 rounded-xl overflow-hidden cursor-default select-none" style={cardStyle}>
+      <div className="relative mt-0 rounded-[1.1rem] overflow-hidden cursor-default select-none p-0.5" style={cardStyle}>
         <div className="px-4 pt-3 pb-1.5 flex items-center justify-between">
-          <span className="text-[9px] font-semibold tracking-[0.15em] uppercase" style={{ color: 'rgba(255,255,255,0.44)' }}>
+          <span className="text-[9px] font-semibold tracking-[0.15em] uppercase" style={{ color: 'rgba(71,85,105,0.72)' }}>
             Property Preview
           </span>
-          <span className="text-[9px] font-medium" style={{ color: 'rgba(255,255,255,0.32)' }}>
+          <span className="text-[9px] font-medium" style={{ color: 'rgba(100,116,139,0.82)' }}>
             Select a type to preview
           </span>
         </div>
         <div className="px-2 pb-2">
-          <DefaultPreviewSvg />
+          <div className="rounded-[0.95rem] border border-[rgba(136,152,172,0.16)] bg-[rgba(250,251,252,0.94)] px-2 pt-2 pb-1 shadow-[0_1px_3px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.96)]">
+            <div className="w-[80%] mx-auto">
+              <DefaultPreviewSvg />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1027,46 +1096,50 @@ function PropertyPreview({
 
   return (
     <div
-      className="relative mt-0 rounded-xl overflow-hidden cursor-default select-none"
+      className="relative mt-0 rounded-[1.1rem] overflow-hidden cursor-default select-none p-0.5"
       style={cardStyle}
     >
       {/* ── Content ── */}
-      <div className="relative z-10">
+      <div className="relative z-10 rounded-[1rem] bg-[linear-gradient(180deg,rgba(255,252,249,0.82)_0%,rgba(255,248,240,0.72)_100%)]">
 
         {/* Header */}
         <div className="px-4 pt-3 pb-1.5 flex items-center justify-between">
-          <span className="text-[9px] font-semibold tracking-[0.15em] uppercase" style={{ color: 'rgba(255,255,255,0.44)' }}>
+          <span className="text-[9px] font-semibold tracking-[0.15em] uppercase" style={{ color: 'rgba(71,85,105,0.72)' }}>
             Property Preview
           </span>
-          <span className="text-[9px] font-medium tracking-wide" style={{ color: 'rgba(255,255,255,0.36)' }}>
+          <span className="text-[9px] font-medium tracking-wide" style={{ color: 'rgba(100,116,139,0.82)' }}>
             {PROPERTY_SUBTITLES[propertyType] ?? ''}
           </span>
         </div>
 
         {/* Building SVG */}
         <div className="px-2 pb-0.5">
-          <PropertyPreviewSvg
-            propertyType={propertyType}
-            floors={fn}
-            basement={basement}
-            elevator={elevator}
-            mezzanine={mezzanine}
-            ducted={ducted}
-            wallType={visibleWallType ? wallType : ''}
-          />
+          <div className="rounded-[0.95rem] border border-[rgba(136,152,172,0.16)] bg-[rgba(250,251,252,0.95)] px-2 pt-2 pb-1 shadow-[0_1px_3px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.96)]">
+            <div className="w-[80%] mx-auto">
+              <PropertyPreviewSvg
+                propertyType={propertyType}
+                floors={fn}
+                basement={basement}
+                elevator={elevator}
+                mezzanine={mezzanine}
+                ducted={ducted}
+                wallType={visibleWallType ? wallType : ''}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Metadata strip */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.055)' }}>
+        <div style={{ borderTop: '1px solid rgba(226,232,240,0.9)' }}>
 
           {/* Material / finish / build type */}
           {hasMaterialRow && (
-            <div className="px-4 py-2.5 flex items-center gap-3 flex-wrap" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+            <div className="px-4 py-2.5 flex items-center gap-3 flex-wrap" style={{ borderBottom: '1px solid rgba(226,232,240,0.7)' }}>
               {wallSwatch && (
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-sm shrink-0"
-                    style={{ background: wallSwatch.bg, boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.2)' }}/>
-                  <span className="text-[10.5px] leading-none" style={{ color: 'rgba(255,255,255,0.58)' }}>{wallSwatch.label}</span>
+                    style={{ background: wallSwatch.bg, boxShadow: 'inset 0 0 0 0.5px rgba(15,23,42,0.10)' }}/>
+                  <span className="text-[10.5px] leading-none" style={{ color: 'rgba(51,65,85,0.82)' }}>{wallSwatch.label}</span>
                 </div>
               )}
               {finishBadge && finishLabel && (
@@ -1077,7 +1150,7 @@ function PropertyPreview({
               )}
               {buildLabel && (
                 <span className="text-[9px] font-semibold tracking-[0.1em] uppercase"
-                  style={{ color: 'rgba(255,255,255,0.42)' }}>
+                  style={{ color: 'rgba(71,85,105,0.72)' }}>
                   {buildLabel}
                 </span>
               )}
@@ -1100,7 +1173,7 @@ function PropertyPreview({
             <div className="px-4 pb-3 pt-0.5 flex flex-wrap gap-1.5">
               {activeAddons.map(a => (
                 <span key={a} className="text-[10px] px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(96,165,250,0.10)', boxShadow: 'inset 0 0 0 0.5px rgba(96,165,250,0.30)', color: 'rgba(147,197,253,0.80)' }}>
+                  style={{ background: 'rgba(255,243,232,0.94)', boxShadow: 'inset 0 0 0 0.5px rgba(244,122,11,0.20)', color: 'rgba(180,83,9,0.84)' }}>
                   {a}
                 </span>
               ))}
@@ -1185,6 +1258,12 @@ export default function ConstructionCalculator() {
   ];
   const checkedAddons          = visibleAddons.filter(o => o.checked).map(o => o.label.toLowerCase());
   const selectedFinishEstimate = result ? getSelectedFinishEstimate(form.finishLevel, result) : 0;
+  const selectedEstimateBucket = form.finishLevel === 'economy'
+    ? { label: 'Low', multiplier: '×0.91' }
+    : form.finishLevel === 'premium' || form.finishLevel === 'luxury'
+      ? { label: 'High', multiplier: '×1.09' }
+      : { label: 'Mid', multiplier: '×1.00' };
+  const gstInclusiveEstimate = result ? Math.round(selectedFinishEstimate * 1.10) : 0;
 
   // Range bar: 0% = low, ~50% = mid, 100% = high
   const rangePercent = result
@@ -1197,212 +1276,9 @@ export default function ConstructionCalculator() {
     : null;
 
   return (
-    <>
-      <style href="prop-preview-animations" precedence="low">{`
-        @keyframes prop-breathe {
-          0%, 100% { filter: drop-shadow(0 0 2px rgba(96,165,250,0.06)); opacity: 0.9; }
-          50%       { filter: drop-shadow(0 0 4px rgba(96,165,250,0.15)); opacity: 1; }
-        }
-        @keyframes prop-airflow {
-          from { stroke-dashoffset: 14; }
-          to   { stroke-dashoffset: 0; }
-        }
-        .prop-breathe      { animation: prop-breathe 4.5s ease-in-out infinite; }
-        .prop-airflow-path { animation: prop-airflow 2.4s linear infinite; }
-        @media (prefers-reduced-motion: reduce) {
-          .prop-breathe, .prop-airflow-path { animation: none !important; }
-        }
-      `}</style>
-
-      {/* ── Two-column layout: form (light) + results (dark) ─────────────────── */}
-      <div className="flex flex-col lg:flex-row gap-5 items-start">
-
-        {/* ── Input panel — white card ──────────────────────────────────────── */}
-        <div className="flex-1 min-w-0 w-full bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-
-          {/* ── Investment Property Type ──────────────────────────────────── */}
-          <div className="px-6 sm:px-7 pt-6 sm:pt-7 pb-5">
-            <SectionLabel>Investment Property Type</SectionLabel>
-            <PropertyTypeSelector
-              value={form.investmentPropertyType}
-              onChange={handlePropertyTypeChange}
-            />
-          </div>
-
-          <Divider />
-
-          {/* ── Project Details ───────────────────────────────────────────── */}
-          <div className="px-6 sm:px-7 py-5">
-            <SectionLabel>Project Details</SectionLabel>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <Field label="Investment Property State" htmlFor="investmentPropertyState" error={isFieldError('investmentPropertyState')}>
-                <LightSelect
-                  id="investmentPropertyState"
-                  value={form.investmentPropertyState}
-                  onChange={e =>
-                    handleChange('investmentPropertyState', e.target.value as FormState['investmentPropertyState'])
-                  }
-                >
-                  <option value="">Select state…</option>
-                  {STATE_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </LightSelect>
-              </Field>
-              <Field label="Construction Completion Year" htmlFor="constructionCompletionYear">
-                <input
-                  type="number"
-                  id="constructionCompletionYear"
-                  value={form.constructionCompletionYear}
-                  min={YEAR_MIN}
-                  max={YEAR_MAX}
-                  onChange={e =>
-                    handleChange(
-                      'constructionCompletionYear',
-                      e.target.value === '' ? '' : Number(e.target.value),
-                    )
-                  }
-                  className="w-full h-10 rounded-lg bg-white border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                />
-              </Field>
-            </div>
-
-            <Field label="Build Type" error={isFieldError('buildType')}>
-              <SegmentedControl
-                options={BUILD_TYPE_OPTIONS}
-                value={form.buildType}
-                onChange={v => handleChange('buildType', v as FormState['buildType'])}
-              />
-            </Field>
-          </div>
-
-          <Divider />
-
-          {/* ── Size & Structure ──────────────────────────────────────────── */}
-          <div className="px-6 sm:px-7 py-5">
-            <SectionLabel>Size &amp; Structure</SectionLabel>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className={visible.bedrooms ? 'col-span-2' : ''}>
-                <Field label="Floor Area (m²)" htmlFor="floorArea" error={isFieldError('floorArea')}>
-                  <input
-                    type="number"
-                    id="floorArea"
-                    value={form.floorArea}
-                    min={1}
-                    onChange={e =>
-                      handleChange('floorArea', e.target.value === '' ? '' : Number(e.target.value))
-                    }
-                    placeholder="e.g. 250"
-                    className="w-full h-10 rounded-lg bg-white border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
-                </Field>
-              </div>
-              {!visible.bedrooms && (
-                <Field label="Number of Floors" error={isFieldError('numberOfFloors')}>
-                  <Stepper
-                    value={form.numberOfFloors}
-                    options={FLOOR_OPTIONS}
-                    onChange={v => handleChange('numberOfFloors', v as FormState['numberOfFloors'])}
-                    ariaLabel="number of floors"
-                  />
-                </Field>
-              )}
-            </div>
-
-            {visible.bedrooms && (
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <Field label="Number of Floors" error={isFieldError('numberOfFloors')}>
-                  <Stepper
-                    value={form.numberOfFloors}
-                    options={FLOOR_OPTIONS}
-                    onChange={v => handleChange('numberOfFloors', v as FormState['numberOfFloors'])}
-                    ariaLabel="number of floors"
-                  />
-                </Field>
-                <Field label="Number of Bedrooms" error={isFieldError('bedrooms')}>
-                  <Stepper
-                    value={form.bedrooms}
-                    options={BEDROOM_OPTIONS}
-                    onChange={v => handleChange('bedrooms', v as FormState['bedrooms'])}
-                    ariaLabel="number of bedrooms"
-                  />
-                </Field>
-              </div>
-            )}
-
-            {visible.wallType && (
-              <Field label="Wall Type" error={isFieldError('wallType')}>
-                <PillSelector
-                  options={WALL_TYPE_OPTIONS}
-                  value={form.wallType}
-                  onChange={v => handleChange('wallType', v as FormState['wallType'])}
-                  cols={2}
-                />
-              </Field>
-            )}
-          </div>
-
-          <Divider />
-
-          {/* ── Spec / Finish Level ───────────────────────────────────────── */}
-          <div className="px-6 sm:px-7 py-5">
-            <SectionLabel>Spec / Finish Level</SectionLabel>
-            <SegmentedControl
-              options={FINISH_LEVEL_OPTIONS}
-              value={form.finishLevel}
-              onChange={v => handleChange('finishLevel', v as FormState['finishLevel'])}
-            />
-          </div>
-
-          <Divider />
-
-          {/* ── Features & Add-ons ────────────────────────────────────────── */}
-          <div className="px-6 sm:px-7 py-5">
-            <SectionLabel>Features &amp; Add-ons</SectionLabel>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {visible.basement && (
-                <ToggleCard
-                  label="Basement"
-                  id="basement"
-                  checked={form.basement}
-                  onChange={v => handleChange('basement', v)}
-                  hint="+$105/m²"
-                />
-              )}
-              {visible.elevator && (
-                <ToggleCard
-                  label="Elevator"
-                  id="elevator"
-                  checked={form.elevator}
-                  onChange={v => handleChange('elevator', v)}
-                  hint="from $100k"
-                />
-              )}
-              {visible.mezzanine && (
-                <ToggleCard
-                  label="Mezzanine"
-                  id="mezzanine"
-                  checked={form.mezzanine}
-                  onChange={v => handleChange('mezzanine', v)}
-                  hint="+$120/m²"
-                />
-              )}
-              <ToggleCard
-                label="Ducted Air-Conditioning"
-                id="ductedAirConditioning"
-                checked={form.ductedAirConditioning}
-                onChange={v => handleChange('ductedAirConditioning', v)}
-                hint="+$255/m²"
-              />
-            </div>
-          </div>
-
-        </div>
-
-        {/* ── Results panel — dark navy ──────────────────────────────────────── */}
-        <div className="w-full lg:w-80 xl:w-96 shrink-0 bg-[#0d1b35] rounded-2xl p-6 sm:p-7 lg:sticky lg:top-8 lg:self-start">
-
-          {/* Property Preview */}
+    <div className="flex flex-col gap-5">
+        {/* ── Top dashboard row ─────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] gap-5 items-stretch md:sticky md:top-4 z-20 md:bg-white/72 md:backdrop-blur-sm md:rounded-[1.75rem] md:p-2">
           <PropertyPreview
             propertyType={form.investmentPropertyType}
             floors={form.numberOfFloors}
@@ -1421,90 +1297,284 @@ export default function ConstructionCalculator() {
             visibleBedrooms={visible.bedrooms}
           />
 
-          {/* Estimate label */}
-          <p className="text-[11px] font-semibold tracking-[0.10em] text-blue-300/90 uppercase mt-5 mb-2">
-            Construction Cost Estimate
-          </p>
-
-          {/* Hero amount */}
-          <p className="font-mono text-5xl font-bold text-white tracking-tight leading-none">
-            {result ? aud.format(selectedFinishEstimate) : '$0'}
-          </p>
-
-          {/* Per-m² rate */}
-          {result && perSqm !== null && (
-            <p className="font-mono text-xs text-white/55 mt-1.5">
-              {aud.format(perSqm)} per m²
+          <div className="relative w-full overflow-hidden rounded-2xl border border-[#EAD9C6] bg-[linear-gradient(180deg,#FFFFFF_0%,#FFFBF6_100%)] p-6 sm:p-7 shadow-[0_12px_30px_rgba(15,23,42,0.07)] flex flex-col min-h-[20rem]">
+            <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-[#F47A0B]" />
+            <p className="text-[11px] font-semibold tracking-[0.10em] text-[#B45309] uppercase mb-2">
+              Construction Cost Estimate
             </p>
-          )}
 
-          {result ? (
-            <>
-              {/* Range bar */}
-              <div className="mt-5">
-                <div className="relative h-1.5 bg-white/15 rounded-full">
-                  <div
-                    className="absolute inset-y-0 left-0 bg-blue-400 rounded-full"
-                    style={{ width: `${Math.max(2, Math.min(100, rangePercent))}%` }}
-                  />
-                  <div
-                    className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-md"
-                    style={{ left: `calc(${Math.max(2, Math.min(98, rangePercent))}% - 7px)` }}
-                  />
-                </div>
-                <div className="flex justify-between mt-2.5">
-                  <div>
-                    <p className="text-[10px] text-white/45 mb-0.5">Low</p>
-                    <p className="text-xs font-mono font-semibold text-white/80">{aud.format(result.low)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-white/45 mb-0.5">High</p>
-                    <p className="text-xs font-mono font-semibold text-white/80">{aud.format(result.high)}</p>
-                  </div>
-                </div>
-              </div>
+            <p className="font-mono text-4xl sm:text-[2.9rem] font-bold text-slate-900 tracking-tight leading-none">
+              {result ? aud.format(selectedFinishEstimate) : '$0'}
+            </p>
 
-              {/* Cost range row */}
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
-                <span className="text-[11px] text-white/45">Cost range</span>
-                <span className="text-xs font-mono font-medium text-white/70">
-                  {aud.format(result.low)} — {aud.format(result.high)}
-                </span>
-              </div>
-
-              {/* Disclaimer */}
-              <p className="text-[10px] text-white/35 leading-relaxed mt-3">
-                Indicative only. Based on current Australian market benchmarks.
-                Actual costs vary by site, subcontractors, and scope.
+            {result && perSqm !== null ? (
+              <p className="font-mono text-xs text-slate-500 mt-2">
+                {aud.format(perSqm)} per m²
               </p>
-            </>
-          ) : (
-            <p className="text-xs text-white/40 mt-3 leading-relaxed">
-              Fill in all fields above to see your estimate.
-            </p>
-          )}
+            ) : (
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Fill in all fields above to see your estimate.
+              </p>
+            )}
 
-          {/* ── CTA — always visible ─────────────────────────────────────── */}
-          <div className="mt-5 pt-5 border-t border-white/10">
-            <button
-              type="button"
-              className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:ring-offset-2 focus:ring-offset-[#0d1b35] transition-colors duration-150"
-            >
-              <IconFileText className="w-4 h-4 shrink-0" />
-              Order Initial Cost Report
-            </button>
-            <button
-              type="button"
-              className="w-full mt-2.5 h-10 flex items-center justify-center gap-2 rounded-xl border border-white/15 text-white/50 text-sm font-medium hover:text-white/80 hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-white/30 transition-colors duration-150"
-            >
-              <IconMail className="w-4 h-4 shrink-0" />
-              Email me the results
-            </button>
+            {result ? (
+              <>
+                <div className="mt-6 rounded-2xl border border-slate-200/80 bg-slate-50 p-4">
+                  <div className="relative h-1.5 bg-slate-200 rounded-full">
+                    <div
+                      className="absolute inset-y-0 left-0 bg-[#F47A0B] rounded-full"
+                      style={{ width: `${Math.max(2, Math.min(100, rangePercent))}%` }}
+                    />
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full border border-slate-300 shadow-md"
+                      style={{ left: `calc(${Math.max(2, Math.min(98, rangePercent))}% - 7px)` }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-2.5">
+                    <div>
+                      <p className="text-[10px] text-slate-500 mb-0.5">Low</p>
+                      <p className="text-xs font-mono font-semibold text-slate-900">{aud.format(result.low)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-500 mb-0.5">High</p>
+                      <p className="text-xs font-mono font-semibold text-slate-900">{aud.format(result.high)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200">
+                  <span className="text-[11px] text-slate-500">Cost range</span>
+                  <span className="text-xs font-mono font-medium text-slate-700">
+                    {aud.format(result.low)} — {aud.format(result.high)}
+                  </span>
+                </div>
+
+                <p className="text-[10px] text-slate-500 leading-relaxed mt-3">
+                  Indicative only. Based on current Australian market benchmarks.
+                  Actual costs vary by site, subcontractors, and scope.
+                </p>
+              </>
+            ) : null}
+
+            <div className="mt-auto pt-5 border-t border-slate-200">
+              <button
+                type="button"
+                className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-[#F47A0B] hover:bg-[#E76A00] active:bg-[#D95F00] text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-2 focus:ring-offset-white transition-colors duration-150"
+              >
+                <IconFileText className="w-4 h-4 shrink-0" />
+                Order Initial Cost Report
+              </button>
+              <button
+                type="button"
+                className="w-full mt-2.5 h-10 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-2 focus:ring-offset-white transition-colors duration-150"
+              >
+                <IconMail className="w-4 h-4 shrink-0" />
+                Email me the results
+              </button>
+            </div>
           </div>
         </div>
 
-      </div>
+        {/* ── Input panel — white card ──────────────────────────────────────── */}
+        <div className="w-full bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
 
+          {/* ── Investment Property Type ──────────────────────────────────── */}
+          <div className="px-6 sm:px-7 pt-6 sm:pt-7 pb-5">
+            <SectionCard>
+              <SectionLabel>Investment Property Type</SectionLabel>
+              <PropertyTypeSelector
+                value={form.investmentPropertyType}
+                onChange={handlePropertyTypeChange}
+                error={isFieldError('investmentPropertyType')}
+              />
+              {isFieldError('investmentPropertyType') && (
+                <p className="mt-3 text-xs text-red-500">Please select a property type.</p>
+              )}
+            </SectionCard>
+          </div>
+
+          <Divider />
+
+          {/* ── Project Details ───────────────────────────────────────────── */}
+          <div className="px-6 sm:px-7 py-5">
+            <SectionCard>
+              <SectionLabel>Project Details</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <Field label="Investment Property State" htmlFor="investmentPropertyState" error={isFieldError('investmentPropertyState')}>
+                  <LightSelect
+                    id="investmentPropertyState"
+                    value={form.investmentPropertyState}
+                    onChange={e =>
+                      handleChange('investmentPropertyState', e.target.value as FormState['investmentPropertyState'])
+                    }
+                  >
+                    <option value="">Select state…</option>
+                    {STATE_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </LightSelect>
+                </Field>
+                <Field label="Construction Completion Year" htmlFor="constructionCompletionYear">
+                  <LightSelect
+                    id="constructionCompletionYear"
+                    value={form.constructionCompletionYear}
+                    onChange={e =>
+                      handleChange(
+                        'constructionCompletionYear',
+                        e.target.value === '' ? '' : Number(e.target.value),
+                      )
+                    }
+                  >
+                    {Array.from({ length: YEAR_MAX - YEAR_MIN + 1 }, (_, i) => YEAR_MAX - i).map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </LightSelect>
+                </Field>
+              </div>
+
+              <Field label="Build Type" error={isFieldError('buildType')}>
+                <BuildTypeSelector
+                  options={BUILD_TYPE_OPTIONS}
+                  value={form.buildType}
+                  onChange={v => handleChange('buildType', v as FormState['buildType'])}
+                />
+              </Field>
+            </SectionCard>
+          </div>
+
+          <Divider />
+
+          {/* ── Size & Structure ──────────────────────────────────────────── */}
+          <div className="px-6 sm:px-7 py-5">
+            <SectionCard>
+              <SectionLabel>Size &amp; Structure</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 items-end">
+                <div className={visible.bedrooms ? 'sm:col-span-2' : ''}>
+                  <Field label="Floor Area (m²)" htmlFor="floorArea" error={isFieldError('floorArea')}>
+                    <div className="max-w-[14rem]">
+                      <input
+                        type="number"
+                        id="floorArea"
+                        value={form.floorArea}
+                        min={1}
+                        onChange={e =>
+                          handleChange('floorArea', e.target.value === '' ? '' : Number(e.target.value))
+                        }
+                        placeholder="e.g. 250"
+                        className="w-full h-11 rounded-xl bg-white border border-[#E7C4A2] px-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.04)] focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:border-transparent transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </Field>
+                </div>
+                {!visible.bedrooms && (
+                  <Field label="Number of Floors" error={isFieldError('numberOfFloors')}>
+                    <Stepper
+                      value={form.numberOfFloors}
+                      options={FLOOR_OPTIONS}
+                      onChange={v => handleChange('numberOfFloors', v as FormState['numberOfFloors'])}
+                      ariaLabel="number of floors"
+                      className="max-w-[13rem]"
+                    />
+                  </Field>
+                )}
+              </div>
+
+              {visible.bedrooms && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <Field label="Number of Floors" error={isFieldError('numberOfFloors')}>
+                    <Stepper
+                      value={form.numberOfFloors}
+                      options={FLOOR_OPTIONS}
+                      onChange={v => handleChange('numberOfFloors', v as FormState['numberOfFloors'])}
+                      ariaLabel="number of floors"
+                      className="max-w-[13rem]"
+                    />
+                  </Field>
+                  <Field label="Number of Bedrooms" error={isFieldError('bedrooms')}>
+                    <Stepper
+                      value={form.bedrooms}
+                      options={BEDROOM_OPTIONS}
+                      onChange={v => handleChange('bedrooms', v as FormState['bedrooms'])}
+                      ariaLabel="number of bedrooms"
+                      className="max-w-[13rem]"
+                    />
+                  </Field>
+                </div>
+              )}
+
+              {visible.wallType && (
+                <Field label="Wall Type" error={isFieldError('wallType')}>
+                  <PillSelector
+                    options={WALL_TYPE_OPTIONS}
+                    value={form.wallType}
+                    onChange={v => handleChange('wallType', v as FormState['wallType'])}
+                    cols={3}
+                  />
+                </Field>
+              )}
+            </SectionCard>
+          </div>
+
+          <Divider />
+
+          {/* ── Spec / Finish Level ───────────────────────────────────────── */}
+          <div className="px-6 sm:px-7 py-5">
+            <SectionCard>
+              <SectionLabel>Spec / Finish Level</SectionLabel>
+              <SegmentedControl
+                options={FINISH_LEVEL_OPTIONS}
+                value={form.finishLevel}
+                onChange={v => handleChange('finishLevel', v as FormState['finishLevel'])}
+                ariaLabel="Finish level"
+              />
+            </SectionCard>
+          </div>
+
+          <Divider />
+
+          {/* ── Features & Add-ons ────────────────────────────────────────── */}
+          <div className="px-6 sm:px-7 py-5">
+            <SectionCard>
+              <SectionLabel>Features &amp; Add-ons</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {visible.basement && (
+                  <ToggleCard
+                    label="Basement"
+                    id="basement"
+                    checked={form.basement}
+                    onChange={v => handleChange('basement', v)}
+                    hint="+$105/m²"
+                  />
+                )}
+                {visible.elevator && (
+                  <ToggleCard
+                    label="Elevator"
+                    id="elevator"
+                    checked={form.elevator}
+                    onChange={v => handleChange('elevator', v)}
+                    hint="from $100k"
+                  />
+                )}
+                {visible.mezzanine && (
+                  <ToggleCard
+                    label="Mezzanine"
+                    id="mezzanine"
+                    checked={form.mezzanine}
+                    onChange={v => handleChange('mezzanine', v)}
+                    hint="+$120/m²"
+                  />
+                )}
+                <ToggleCard
+                  label="Ducted Air-Conditioning"
+                  id="ductedAirConditioning"
+                  checked={form.ductedAirConditioning}
+                  onChange={v => handleChange('ductedAirConditioning', v)}
+                  hint="+$255/m²"
+                />
+              </div>
+            </SectionCard>
+          </div>
+        </div>
       {/* ── How your estimate is calculated ──────────────────────────────────── */}
       <div className="mt-8">
         <h2 className="text-xl font-semibold text-slate-800 mb-4">
@@ -1553,8 +1623,7 @@ export default function ConstructionCalculator() {
               <HowCardHeader step="B" title="How we calculated it" />
               <div className="flex flex-col gap-3 text-sm text-slate-600 leading-relaxed">
                 <p>
-                  Your {typeLabel} estimate starts from a base construction rate for
-                  a <strong className="font-semibold text-slate-900">{finishLabel.toLowerCase()}</strong> finish across{' '}
+                  Your {typeLabel} estimate is driven by the selected property type and floor area of{' '}
                   <strong className="font-semibold text-slate-900">{form.floorArea} m²</strong> on{' '}
                   <strong className="font-semibold text-slate-900">{form.numberOfFloors} {floorCount === 1 ? 'floor' : 'floors'}</strong>
                   {visible.bedrooms && bedroomCount > 0
@@ -1567,7 +1636,7 @@ export default function ConstructionCalculator() {
                 <p>
                   The <strong className="font-semibold text-slate-900">{form.investmentPropertyState}</strong> location and{' '}
                   <strong className="font-semibold text-slate-900">{form.constructionCompletionYear}</strong> completion year apply
-                  regional and time-based cost adjustments to the base rate.
+                  regional and time-based cost adjustments using the current benchmark index inputs.
                 </p>
                 {checkedAddons.length > 0 ? (
                   <p>
@@ -1579,10 +1648,10 @@ export default function ConstructionCalculator() {
                   <p>No optional add-ons were selected.</p>
                 )}
                 <p>
-                  The estimate for your selected{' '}
-                  <strong className="font-semibold text-slate-900">{finishLabel}</strong> finish
-                  is <strong className="font-semibold text-slate-900">{aud.format(selectedFinishEstimate)}</strong>. The low and
-                  high figures represent the construction cost range around this value.
+                  Your selected <strong className="font-semibold text-slate-900">{finishLabel}</strong> finish selects which
+                  precomputed estimate bucket is emphasised: Economy → Low (×0.91), Standard → Mid (×1.00), and Premium or Luxury → High (×1.09).
+                  For your current selection, the highlighted estimate is{' '}
+                  <strong className="font-semibold text-slate-900">{aud.format(selectedFinishEstimate)}</strong>.
                 </p>
               </div>
             </div>
@@ -1592,14 +1661,15 @@ export default function ConstructionCalculator() {
               <HowCardHeader step="C" title="What affects your estimate" />
               <ul className="flex flex-col gap-2 text-sm text-slate-600">
                 {[
-                  'Property type sets the base construction rate per m².',
+                  'Property type sets the starting estimate profile.',
                   'Floor area scales the total cost proportionally.',
-                  'Finish level applies a multiplier across the entire build cost.',
-                  'Build type adds a complexity premium for knockdown rebuilds or extensions.',
+                  'Storeys affect the estimate through the storey multiplier.',
                   ...(visible.bedrooms ? ['Bedroom count adjusts for additional wet areas and joinery.'] : []),
                   ...(visible.wallType ? ['Wall type adds or reduces the per-m² cost.'] : []),
-                  'State and completion year apply regional and time-based cost indices.',
+                  'State and completion year apply regional and time-based benchmark cost indices.',
                   `Add-ons (${visibleAddons.map(o => o.label).join(', ')}) each add a fixed cost when selected.`,
+                  'Build type is collected for context and reporting, but does not change the current calculation.',
+                  'Finish level highlights one of the precomputed output buckets: Low (×0.91), Mid (×1.00), or High (×1.09).',
                   'Land price is not included in any estimate.',
                 ].map((item, i) => (
                   <li key={i} className="flex gap-2.5">
@@ -1612,19 +1682,30 @@ export default function ConstructionCalculator() {
 
             {/* D — Totals */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-              <HowCardHeader step="D" title="Totals" />
+              <HowCardHeader step="D" title="Totals (ex-GST)" />
               <div className="flex flex-col divide-y divide-slate-100">
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-sm text-slate-500">Low estimate</span>
+                  <span className="text-sm text-slate-500">Low estimate (×0.91)</span>
                   <span className="text-sm font-mono font-medium text-slate-900">{aud.format(result.low)}</span>
                 </div>
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-sm text-slate-500">Finish (selected)</span>
+                  <span className="text-sm text-slate-500">
+                    Selected finish
+                    <span className="text-slate-400"> — {finishLabel} / {selectedEstimateBucket.label} ({selectedEstimateBucket.multiplier})</span>
+                  </span>
                   <span className="text-sm font-mono font-semibold text-slate-900">{aud.format(selectedFinishEstimate)}</span>
                 </div>
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-sm text-slate-500">High estimate</span>
+                  <span className="text-sm text-slate-500">Mid estimate (×1.00)</span>
+                  <span className="text-sm font-mono font-medium text-slate-900">{aud.format(result.mid)}</span>
+                </div>
+                <div className="flex justify-between items-center py-3">
+                  <span className="text-sm text-slate-500">High estimate (×1.09)</span>
                   <span className="text-sm font-mono font-medium text-slate-900">{aud.format(result.high)}</span>
+                </div>
+                <div className="flex justify-between items-center py-3">
+                  <span className="text-sm text-slate-500">GST-inclusive estimate (×1.10)</span>
+                  <span className="text-sm font-mono font-medium text-slate-900">{aud.format(gstInclusiveEstimate)}</span>
                 </div>
                 <div className="flex justify-between items-center py-3">
                   <span className="text-sm text-slate-500">Cost range</span>
@@ -1632,13 +1713,13 @@ export default function ConstructionCalculator() {
                 </div>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed mt-4 pt-4 border-t border-slate-100">
-                Indicative only. Not a final construction quote. Land price excluded.
+                Finish level selects which estimate bucket is highlighted. GST is shown separately above at ×1.10.
               </p>
             </div>
 
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

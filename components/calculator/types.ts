@@ -2,7 +2,13 @@
 
 export type PropertyType = 'house' | 'townhouse' | 'apartment' | 'granny_flat' | 'office' | 'warehouse';
 export type PropertyState = 'NSW' | 'VIC' | 'QLD' | 'SA' | 'WA' | 'TAS' | 'ACT' | 'NT';
-export type BuildType = 'new_build' | 'knockdown_rebuild' | 'extension';
+export type BuildType =
+  | 'new_build'
+  | 'knockdown_rebuild'
+  | 'renovation_light'
+  | 'renovation_major'
+  | 'extension_addition'
+  | 'granny_flat_secondary_dwelling';
 export type FinishLevel = 'economy' | 'standard' | 'premium' | 'luxury';
 export type WallType = 'brick_veneer' | 'double_brick' | 'concrete';
 
@@ -64,9 +70,12 @@ export const STATE_OPTIONS: SelectOption<PropertyState>[] = [
 ];
 
 export const BUILD_TYPE_OPTIONS: SelectOption<BuildType>[] = [
-  { value: 'new_build',          label: 'New Build' },
-  { value: 'knockdown_rebuild',  label: 'Knockdown & Rebuild' },
-  { value: 'extension',          label: 'Extension / Renovation' },
+  { value: 'new_build',                       label: 'New build' },
+  { value: 'knockdown_rebuild',               label: 'Knock-down & rebuild' },
+  { value: 'renovation_light',                label: 'Renovation – light (≤30% area)' },
+  { value: 'renovation_major',                label: 'Renovation – major (>30% area)' },
+  { value: 'extension_addition',              label: 'Extension / addition' },
+  { value: 'granny_flat_secondary_dwelling',  label: 'Granny flat / secondary dwelling' },
 ];
 
 export const FINISH_LEVEL_OPTIONS: SelectOption<FinishLevel>[] = [
