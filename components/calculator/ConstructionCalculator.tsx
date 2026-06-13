@@ -1277,106 +1277,8 @@ export default function ConstructionCalculator() {
 
   return (
     <div className="flex flex-col gap-5">
-        {/* ── Top dashboard row ─────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] gap-5 items-stretch md:sticky md:top-4 z-20 md:bg-white/72 md:backdrop-blur-sm md:rounded-[1.75rem] md:p-2">
-          <PropertyPreview
-            propertyType={form.investmentPropertyType}
-            floors={form.numberOfFloors}
-            basement={form.basement}
-            elevator={form.elevator}
-            mezzanine={form.mezzanine}
-            ducted={form.ductedAirConditioning}
-            wallType={form.wallType}
-            finishLevel={form.finishLevel}
-            buildType={form.buildType}
-            floorArea={form.floorArea}
-            bedrooms={form.bedrooms}
-            state={form.investmentPropertyState}
-            year={form.constructionCompletionYear}
-            visibleWallType={visible.wallType}
-            visibleBedrooms={visible.bedrooms}
-          />
-
-          <div className="relative w-full overflow-hidden rounded-2xl border border-[#EAD9C6] bg-[linear-gradient(180deg,#FFFFFF_0%,#FFFBF6_100%)] p-6 sm:p-7 shadow-[0_12px_30px_rgba(15,23,42,0.07)] flex flex-col min-h-[20rem]">
-            <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-[#F47A0B]" />
-            <p className="text-[11px] font-semibold tracking-[0.10em] text-[#B45309] uppercase mb-2">
-              Construction Cost Estimate
-            </p>
-
-            <p className="font-mono text-4xl sm:text-[2.9rem] font-bold text-slate-900 tracking-tight leading-none">
-              {result ? aud.format(selectedFinishEstimate) : '$0'}
-            </p>
-
-            {result && perSqm !== null ? (
-              <p className="font-mono text-xs text-slate-500 mt-2">
-                {aud.format(perSqm)} per m²
-              </p>
-            ) : (
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                Fill in all fields above to see your estimate.
-              </p>
-            )}
-
-            {result ? (
-              <>
-                <div className="mt-6 rounded-2xl border border-slate-200/80 bg-slate-50 p-4">
-                  <div className="relative h-1.5 bg-slate-200 rounded-full">
-                    <div
-                      className="absolute inset-y-0 left-0 bg-[#F47A0B] rounded-full"
-                      style={{ width: `${Math.max(2, Math.min(100, rangePercent))}%` }}
-                    />
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full border border-slate-300 shadow-md"
-                      style={{ left: `calc(${Math.max(2, Math.min(98, rangePercent))}% - 7px)` }}
-                    />
-                  </div>
-                  <div className="flex justify-between mt-2.5">
-                    <div>
-                      <p className="text-[10px] text-slate-500 mb-0.5">Low</p>
-                      <p className="text-xs font-mono font-semibold text-slate-900">{aud.format(result.low)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-slate-500 mb-0.5">High</p>
-                      <p className="text-xs font-mono font-semibold text-slate-900">{aud.format(result.high)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200">
-                  <span className="text-[11px] text-slate-500">Cost range</span>
-                  <span className="text-xs font-mono font-medium text-slate-700">
-                    {aud.format(result.low)} — {aud.format(result.high)}
-                  </span>
-                </div>
-
-                <p className="text-[10px] text-slate-500 leading-relaxed mt-3">
-                  Indicative only. Based on current Australian market benchmarks.
-                  Actual costs vary by site, subcontractors, and scope.
-                </p>
-              </>
-            ) : null}
-
-            <div className="mt-auto pt-5 border-t border-slate-200">
-              <button
-                type="button"
-                className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-[#F47A0B] hover:bg-[#E76A00] active:bg-[#D95F00] text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-2 focus:ring-offset-white transition-colors duration-150"
-              >
-                <IconFileText className="w-4 h-4 shrink-0" />
-                Order Initial Cost Report
-              </button>
-              <button
-                type="button"
-                className="w-full mt-2.5 h-10 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-2 focus:ring-offset-white transition-colors duration-150"
-              >
-                <IconMail className="w-4 h-4 shrink-0" />
-                Email me the results
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Input panel — white card ──────────────────────────────────────── */}
-        <div className="w-full bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+        <div className="order-2 lg:order-1 w-full bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
 
           {/* ── Investment Property Type ──────────────────────────────────── */}
           <div className="px-6 sm:px-7 pt-6 sm:pt-7 pb-5">
@@ -1575,6 +1477,105 @@ export default function ConstructionCalculator() {
             </SectionCard>
           </div>
         </div>
+        <div className="order-1 lg:order-2 lg:sticky lg:top-6 lg:self-start">
+          <div className="flex flex-col gap-5">
+            <PropertyPreview
+              propertyType={form.investmentPropertyType}
+              floors={form.numberOfFloors}
+              basement={form.basement}
+              elevator={form.elevator}
+              mezzanine={form.mezzanine}
+              ducted={form.ductedAirConditioning}
+              wallType={form.wallType}
+              finishLevel={form.finishLevel}
+              buildType={form.buildType}
+              floorArea={form.floorArea}
+              bedrooms={form.bedrooms}
+              state={form.investmentPropertyState}
+              year={form.constructionCompletionYear}
+              visibleWallType={visible.wallType}
+              visibleBedrooms={visible.bedrooms}
+            />
+
+            <div className="relative w-full overflow-hidden rounded-2xl border border-[#EAD9C6] bg-[linear-gradient(180deg,#FFFFFF_0%,#FFFBF6_100%)] p-6 sm:p-7 shadow-[0_12px_30px_rgba(15,23,42,0.07)] flex flex-col min-h-[20rem]">
+              <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-[#F47A0B]" />
+              <p className="text-[11px] font-semibold tracking-[0.10em] text-[#B45309] uppercase mb-2">
+                Construction Cost Estimate
+              </p>
+
+              <p className="font-mono text-4xl sm:text-[2.9rem] font-bold text-slate-900 tracking-tight leading-none">
+                {result ? aud.format(selectedFinishEstimate) : '$0'}
+              </p>
+
+              {result && perSqm !== null ? (
+                <p className="font-mono text-xs text-slate-500 mt-2">
+                  {aud.format(perSqm)} per m²
+                </p>
+              ) : (
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Fill in all fields above to see your estimate.
+                </p>
+              )}
+
+              {result ? (
+                <>
+                  <div className="mt-6 rounded-2xl border border-slate-200/80 bg-slate-50 p-4">
+                    <div className="relative h-1.5 bg-slate-200 rounded-full">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-[#F47A0B] rounded-full"
+                        style={{ width: `${Math.max(2, Math.min(100, rangePercent))}%` }}
+                      />
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full border border-slate-300 shadow-md"
+                        style={{ left: `calc(${Math.max(2, Math.min(98, rangePercent))}% - 7px)` }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-2.5">
+                      <div>
+                        <p className="text-[10px] text-slate-500 mb-0.5">Low</p>
+                        <p className="text-xs font-mono font-semibold text-slate-900">{aud.format(result.low)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-slate-500 mb-0.5">High</p>
+                        <p className="text-xs font-mono font-semibold text-slate-900">{aud.format(result.high)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200">
+                    <span className="text-[11px] text-slate-500">Cost range</span>
+                    <span className="text-xs font-mono font-medium text-slate-700">
+                      {aud.format(result.low)} — {aud.format(result.high)}
+                    </span>
+                  </div>
+
+                  <p className="text-[10px] text-slate-500 leading-relaxed mt-3">
+                    Indicative only. Based on current Australian market benchmarks.
+                    Actual costs vary by site, subcontractors, and scope.
+                  </p>
+                </>
+              ) : null}
+
+              <div className="mt-auto pt-5 border-t border-slate-200">
+                <button
+                  type="button"
+                  className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-[#F47A0B] hover:bg-[#E76A00] active:bg-[#D95F00] text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-2 focus:ring-offset-white transition-colors duration-150"
+                >
+                  <IconFileText className="w-4 h-4 shrink-0" />
+                  Order Initial Cost Report
+                </button>
+                <button
+                  type="button"
+                  className="w-full mt-2.5 h-10 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#F47A0B] focus:ring-offset-2 focus:ring-offset-white transition-colors duration-150"
+                >
+                  <IconMail className="w-4 h-4 shrink-0" />
+                  Email me the results
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       {/* ── How your estimate is calculated ──────────────────────────────────── */}
       <div className="mt-8">
         <h2 className="text-xl font-semibold text-slate-800 mb-4">
